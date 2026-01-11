@@ -1,0 +1,10 @@
+[Unit]
+Description=RSS Reader Feed Refresh
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/Projects/rss-reader/target/release/rss-reader --refresh
+Restart=on-failure
+RestartSec=5m

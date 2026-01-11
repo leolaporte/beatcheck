@@ -1,0 +1,74 @@
+[package]
+name = "rss-reader"
+version = "0.1.0"
+edition = "2021"
+description = "A TUI RSS reader with AI-powered summaries"
+license = "MIT"
+repository = "https://github.com/leolaporte/rss-reader"
+readme = "README.md"
+keywords = ["rss", "tui", "reader", "cli"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "rss-reader"
+path = "src/main.rs"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+opt-level = "z"
+
+[dependencies]
+# TUI Framework
+ratatui = "0.29"
+crossterm = "0.28"
+
+# Async Runtime
+tokio = { version = "1.43", features = ["full"] }
+
+# HTTP Client
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+
+# Feed Parsing
+feed-rs = "2.3"
+opml = "1.1"
+
+# Database
+tokio-rusqlite = "0.6"
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# Date/Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Error Handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# HTML Processing
+html2text = "0.14"
+
+# Configuration
+dirs = "5.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Text wrapping for TUI
+textwrap = "0.16"
+
+# Async utilities
+futures = "0.3"
+
+# Open URLs in browser
+open = "5"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = "3.14"
