@@ -2,6 +2,8 @@
 
 A terminal-based RSS reader with AI-powered article summaries.
 
+I built this for my personal use on a Sunday morning entirely vibe coded with [Claude Code](https://claude.ai/code).
+
 ## Features
 
 - Two-pane TUI interface (article list + AI summary)
