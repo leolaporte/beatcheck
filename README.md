@@ -81,6 +81,7 @@ rss-reader --refresh
 | `S` | Save to Raindrop.io |
 | `f` | Cycle filter (Unread/Starred/All) |
 | `g` | Regenerate summary |
+| `d` | Delete article |
 | `?` | Show help |
 | `q` | Quit |
 
