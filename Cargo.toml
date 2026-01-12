@@ -28,7 +28,14 @@ crossterm = "0.28"
 tokio = { version = "1.43", features = ["full"] }
 
 # HTTP Client (rustls only, no OpenSSL for easier cross-compilation)
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "http2", "charset"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "http2", "charset", "cookies"] }
+
+# URL parsing
+url = "2.5"
+
+# HTML content extraction
+readability = "0.3"
+scraper = "0.22"
 
 # Feed Parsing
 feed-rs = "2.3"

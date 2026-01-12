@@ -10,7 +10,7 @@ use crate::db::Repository;
 use crate::error::Result;
 use crate::feed::{parse_opml_file, FeedFetcher};
 use crate::models::{Article, ArticleFilter, Feed, Summary, SummaryStatus};
-use crate::services::RaindropClient;
+use crate::services::{ContentFetcher, RaindropClient};
 use crate::tui::AppAction;
 
 // Message for completed summary
@@ -46,6 +46,7 @@ pub struct App {
     fetcher: FeedFetcher,
     summarizer: Option<Arc<Summarizer>>,
     raindrop: Option<RaindropClient>,
+    content_fetcher: ContentFetcher,
 }
 
 impl App {
@@ -62,6 +63,8 @@ impl App {
             .raindrop_token
             .as_ref()
             .map(|token| RaindropClient::new(token.clone()));
+
+        let content_fetcher = ContentFetcher::new();
 
         let feeds = repository.get_all_feeds().await?;
         let articles = repository.get_all_articles_sorted().await?;
@@ -88,6 +91,7 @@ impl App {
             fetcher,
             summarizer,
             raindrop,
+            content_fetcher,
         })
     }
 
@@ -280,7 +284,10 @@ impl App {
 
         let article_id = article.id;
         let title = article.title.clone();
-        let content = article
+        let article_url = article.url.clone();
+
+        // Get RSS content as fallback
+        let rss_content = article
             .content_text
             .clone()
             .or_else(|| article.content.clone())
@@ -288,6 +295,22 @@ impl App {
 
         self.summary_status = SummaryStatus::Generating;
         self.pending_summary_article_id = Some(article_id);
+
+        // Try to fetch full content using browser cookies
+        let content = match self.content_fetcher.fetch_full_content(&article_url).await {
+            Ok(Some(full_content)) => {
+                tracing::info!("Fetched full content for: {}", article_url);
+                full_content
+            }
+            Ok(None) => {
+                tracing::debug!("No full content available, using RSS content");
+                rss_content
+            }
+            Err(e) => {
+                tracing::debug!("Failed to fetch full content: {}, using RSS", e);
+                rss_content
+            }
+        };
 
         // Spawn background task for summary generation
         let summarizer = Arc::clone(summarizer);
@@ -316,20 +339,33 @@ impl App {
         if let Ok(result) = self.summary_rx.try_recv() {
             // Only process if this is the summary we're waiting for
             if self.pending_summary_article_id == Some(result.article_id) {
+                // Check if the article still exists (might have been deleted)
+                let article_exists = self.articles.iter().any(|a| a.id == result.article_id);
+
                 match result.result {
                     Ok((summary_text, model)) => {
-                        self.repository
-                            .save_summary(result.article_id, summary_text.clone(), model.clone())
-                            .await?;
+                        if article_exists {
+                            // Save to database only if article still exists
+                            if let Err(e) = self
+                                .repository
+                                .save_summary(result.article_id, summary_text.clone(), model.clone())
+                                .await
+                            {
+                                tracing::warn!("Failed to save summary (article may have been deleted): {}", e);
+                            }
 
-                        self.current_summary = Some(Summary {
-                            id: 0,
-                            article_id: result.article_id,
-                            content: summary_text,
-                            model_version: model,
-                            generated_at: chrono::Utc::now(),
-                        });
-                        self.summary_status = SummaryStatus::Generated;
+                            self.current_summary = Some(Summary {
+                                id: 0,
+                                article_id: result.article_id,
+                                content: summary_text,
+                                model_version: model,
+                                generated_at: chrono::Utc::now(),
+                            });
+                            self.summary_status = SummaryStatus::Generated;
+                        } else {
+                            tracing::debug!("Discarding summary for deleted article {}", result.article_id);
+                            self.summary_status = SummaryStatus::NotGenerated;
+                        }
                     }
                     Err(e) => {
                         tracing::error!("Failed to generate summary: {}", e);
@@ -406,8 +442,21 @@ impl App {
         let url = article.url.clone();
         let title = article.title.clone();
 
+        // Get excerpt: prefer summary, fall back to first sentence of article content
+        let excerpt = self
+            .current_summary
+            .as_ref()
+            .map(|s| Self::get_first_sentence(&s.content))
+            .or_else(|| {
+                article
+                    .content_text
+                    .as_ref()
+                    .or(article.content.as_ref())
+                    .map(|c| Self::get_first_sentence(c))
+            });
+
         match raindrop
-            .save_bookmark(&url, Some(&title), None, tags.clone())
+            .save_bookmark(&url, Some(&title), excerpt.as_deref(), tags.clone())
             .await
         {
             Ok(raindrop_id) => {
@@ -427,6 +476,33 @@ impl App {
         // Don't reload - keep article visible in filtered list this session
 
         Ok(())
+    }
+
+    /// Extract the first sentence from text (up to ~200 chars for Raindrop excerpt)
+    fn get_first_sentence(text: &str) -> String {
+        let text = text.trim();
+        // Find the end of the first sentence
+        let sentence_end = text
+            .find(". ")
+            .or_else(|| text.find(".\n"))
+            .or_else(|| text.find('.'))
+            .map(|i| i + 1)
+            .unwrap_or(text.len());
+
+        let first_sentence = &text[..sentence_end.min(text.len())];
+
+        // Truncate to ~200 chars for Raindrop
+        if first_sentence.len() > 200 {
+            let truncated = &first_sentence[..200];
+            // Find last space to avoid cutting mid-word
+            if let Some(last_space) = truncated.rfind(' ') {
+                format!("{}...", &truncated[..last_space])
+            } else {
+                format!("{}...", truncated)
+            }
+        } else {
+            first_sentence.to_string()
+        }
     }
 
     pub async fn import_opml(&mut self, path: &Path) -> Result<()> {

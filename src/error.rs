@@ -5,6 +5,9 @@ pub enum AppError {
     #[error("Database error: {0}")]
     Database(#[from] tokio_rusqlite::Error),
 
+    #[error("SQLite error: {0}")]
+    Sqlite(#[from] rusqlite::Error),
+
     #[error("HTTP request failed: {0}")]
     Http(#[from] reqwest::Error),
 
