@@ -402,6 +402,7 @@ fn render_help(frame: &mut Frame) {
         "   g        Regenerate summary",
         "   f        Cycle filter",
         "   d        Delete article",
+        "   u        Undelete last",
         "",
         " General:",
         "   ?        Toggle this help",

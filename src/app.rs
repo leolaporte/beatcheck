@@ -41,6 +41,7 @@ pub struct App {
     pub opml_export_input: String,
     pub opml_export_status: Option<String>,
     pub is_saved_to_raindrop: bool,
+    pub last_deleted: Option<(i64, String)>, // (feed_id, guid) for undo
     pub spinner_frame: usize,
     selection_time: Option<Instant>,
 
@@ -106,6 +107,7 @@ impl App {
             opml_export_input: String::new(),
             opml_export_status: None,
             is_saved_to_raindrop: false,
+            last_deleted: None,
             spinner_frame: 0,
             selection_time: None,
             is_refreshing: false,
@@ -217,7 +219,11 @@ impl App {
             AppAction::DeleteArticle => {
                 if let Some(article) = self.selected_article() {
                     let id = article.id;
+                    let feed_id = article.feed_id;
+                    let guid = article.guid.clone();
                     self.repository.delete_article(id).await?;
+                    // Store for undo
+                    self.last_deleted = Some((feed_id, guid));
                     // Remove from local list
                     self.articles.retain(|a| a.id != id);
                     // Adjust selection if needed
@@ -228,6 +234,14 @@ impl App {
                     // Reset summary state
                     self.summary_status = SummaryStatus::NotGenerated;
                     self.current_summary = None;
+                }
+            }
+
+            AppAction::UndeleteArticle => {
+                if let Some((feed_id, guid)) = self.last_deleted.take() {
+                    self.repository.undelete_article(feed_id, &guid).await?;
+                    // Refresh to bring the article back
+                    self.refresh_feeds().await?;
                 }
             }
 

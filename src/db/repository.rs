@@ -194,6 +194,20 @@ impl Repository {
         Ok(())
     }
 
+    pub async fn undelete_article(&self, feed_id: i64, guid: &str) -> Result<()> {
+        let guid = guid.to_string();
+        self.conn
+            .call(move |conn| {
+                conn.execute(
+                    "DELETE FROM deleted_articles WHERE feed_id = ?1 AND guid = ?2",
+                    params![feed_id, guid],
+                )?;
+                Ok(())
+            })
+            .await?;
+        Ok(())
+    }
+
     pub async fn delete_old_articles(&self, days: i64) -> Result<usize> {
         let deleted = self
             .conn
