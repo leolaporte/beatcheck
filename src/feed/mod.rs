@@ -1,5 +1,5 @@
 mod opml;
 mod fetcher;
 
-pub use opml::parse_opml_file;
+pub use opml::{export_opml_file, parse_opml_file};
 pub use fetcher::FeedFetcher;

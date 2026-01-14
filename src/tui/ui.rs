@@ -66,6 +66,11 @@ pub fn draw(frame: &mut Frame, app: &App) {
         render_opml_input(frame, app);
     }
 
+    // Render OPML export popup if active
+    if app.opml_export_active {
+        render_opml_export(frame, app);
+    }
+
     // Render help popup if active
     if app.show_help {
         render_help(frame);
@@ -334,6 +339,46 @@ fn render_opml_input(frame: &mut Frame, app: &App) {
     }
 }
 
+fn render_opml_export(frame: &mut Frame, app: &App) {
+    let area = centered_rect(70, 25, frame.area());
+
+    let block = Block::default()
+        .title(" Export OPML - Enter file path ")
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Green));
+
+    let inner = block.inner(area);
+
+    // Clear the area first
+    frame.render_widget(ratatui::widgets::Clear, area);
+    frame.render_widget(block, area);
+
+    // Split inner area for input and status
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(1), Constraint::Length(1), Constraint::Min(0)])
+        .split(inner);
+
+    let input_text = format!("> {}_", app.opml_export_input);
+    let paragraph = Paragraph::new(input_text).style(Style::default().fg(Color::White));
+    frame.render_widget(paragraph, chunks[0]);
+
+    // Show status message if any
+    if let Some(status) = &app.opml_export_status {
+        let (display_status, color) = if status.starts_with("Exported") {
+            (status.clone(), Color::Green)
+        } else if status.starts_with("Error:") {
+            (status.clone(), Color::Red)
+        } else if status == "Exporting..." {
+            (format!("{} Exporting...", app.spinner_char()), Color::Green)
+        } else {
+            (status.clone(), Color::DarkGray)
+        };
+        let status_paragraph = Paragraph::new(display_status).style(Style::default().fg(color));
+        frame.render_widget(status_paragraph, chunks[1]);
+    }
+}
+
 fn render_help(frame: &mut Frame) {
     let area = centered_rect(50, 60, frame.area());
 
@@ -348,6 +393,7 @@ fn render_help(frame: &mut Frame) {
         "   r        Refresh all feeds",
         "   a        Add new feed",
         "   i        Import OPML file",
+        "   w        Export OPML file",
         "   s        Toggle starred",
         "   m        Toggle read/unread",
         "   o        Open in browser",

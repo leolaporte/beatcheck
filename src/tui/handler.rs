@@ -34,6 +34,12 @@ pub enum AppAction {
     OpmlInputBackspace,
     OpmlInputConfirm,
     OpmlInputCancel,
+    // OPML export actions
+    ExportOpmlStart,
+    OpmlExportChar(char),
+    OpmlExportBackspace,
+    OpmlExportConfirm,
+    OpmlExportCancel,
 }
 
 pub fn handle_key_event(
@@ -41,6 +47,7 @@ pub fn handle_key_event(
     tag_input_active: bool,
     feed_input_active: bool,
     opml_input_active: bool,
+    opml_export_active: bool,
     show_help: bool,
 ) -> Option<AppAction> {
     // If help is showing, any key closes it
@@ -70,13 +77,24 @@ pub fn handle_key_event(
         };
     }
 
-    // OPML input mode
+    // OPML import input mode
     if opml_input_active {
         return match key.code {
             KeyCode::Enter => Some(AppAction::OpmlInputConfirm),
             KeyCode::Esc => Some(AppAction::OpmlInputCancel),
             KeyCode::Backspace => Some(AppAction::OpmlInputBackspace),
             KeyCode::Char(c) => Some(AppAction::OpmlInputChar(c)),
+            _ => None,
+        };
+    }
+
+    // OPML export input mode
+    if opml_export_active {
+        return match key.code {
+            KeyCode::Enter => Some(AppAction::OpmlExportConfirm),
+            KeyCode::Esc => Some(AppAction::OpmlExportCancel),
+            KeyCode::Backspace => Some(AppAction::OpmlExportBackspace),
+            KeyCode::Char(c) => Some(AppAction::OpmlExportChar(c)),
             _ => None,
         };
     }
@@ -102,6 +120,7 @@ pub fn handle_key_event(
         (KeyCode::Char('d'), _) => Some(AppAction::DeleteArticle),
         (KeyCode::Char('a'), _) => Some(AppAction::AddFeed),
         (KeyCode::Char('i'), _) => Some(AppAction::ImportOpmlStart),
+        (KeyCode::Char('w'), _) => Some(AppAction::ExportOpmlStart),
 
         (KeyCode::Char('?'), _) => Some(AppAction::ShowHelp),
 

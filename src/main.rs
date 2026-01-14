@@ -111,7 +111,7 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
         if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
                 if let Some(action) =
-                    handle_key_event(key, app.tag_input_active, app.feed_input_active, app.opml_input_active, app.show_help)
+                    handle_key_event(key, app.tag_input_active, app.feed_input_active, app.opml_input_active, app.opml_export_active, app.show_help)
                 {
                     let should_quit = app.handle_action(action).await?;
                     if should_quit {

@@ -8,7 +8,7 @@ use crate::ai::Summarizer;
 use crate::config::Config;
 use crate::db::Repository;
 use crate::error::Result;
-use crate::feed::{parse_opml_file, FeedFetcher};
+use crate::feed::{export_opml_file, parse_opml_file, FeedFetcher};
 use crate::models::{Article, ArticleFilter, Feed, Summary, SummaryStatus};
 use crate::services::{ContentFetcher, RaindropClient};
 use crate::tui::AppAction;
@@ -37,6 +37,9 @@ pub struct App {
     pub opml_input_active: bool,
     pub opml_input: String,
     pub opml_input_status: Option<String>,
+    pub opml_export_active: bool,
+    pub opml_export_input: String,
+    pub opml_export_status: Option<String>,
     pub is_saved_to_raindrop: bool,
     pub spinner_frame: usize,
     selection_time: Option<Instant>,
@@ -99,6 +102,9 @@ impl App {
             opml_input_active: false,
             opml_input: String::new(),
             opml_input_status: None,
+            opml_export_active: false,
+            opml_export_input: String::new(),
+            opml_export_status: None,
             is_saved_to_raindrop: false,
             spinner_frame: 0,
             selection_time: None,
@@ -298,6 +304,30 @@ impl App {
                 self.opml_input_active = false;
                 self.opml_input.clear();
                 self.opml_input_status = None;
+            }
+
+            AppAction::ExportOpmlStart => {
+                self.opml_export_active = true;
+                self.opml_export_input = "~/feeds.opml".to_string();
+                self.opml_export_status = None;
+            }
+
+            AppAction::OpmlExportChar(c) => {
+                self.opml_export_input.push(c);
+            }
+
+            AppAction::OpmlExportBackspace => {
+                self.opml_export_input.pop();
+            }
+
+            AppAction::OpmlExportConfirm => {
+                self.export_opml_to_file()?;
+            }
+
+            AppAction::OpmlExportCancel => {
+                self.opml_export_active = false;
+                self.opml_export_input.clear();
+                self.opml_export_status = None;
             }
         }
 
@@ -743,6 +773,41 @@ impl App {
             }
             Err(e) => {
                 self.opml_input_status = Some(format!("Error: {}", e));
+            }
+        }
+
+        Ok(())
+    }
+
+    fn export_opml_to_file(&mut self) -> Result<()> {
+        let input = self.opml_export_input.trim().to_string();
+        if input.is_empty() {
+            self.opml_export_status = Some("Enter a file path".to_string());
+            return Ok(());
+        }
+
+        // Expand ~ to home directory
+        let expanded = if input.starts_with("~/") {
+            if let Some(home) = dirs::home_dir() {
+                home.join(&input[2..])
+            } else {
+                PathBuf::from(&input)
+            }
+        } else {
+            PathBuf::from(&input)
+        };
+
+        self.opml_export_status = Some("Exporting...".to_string());
+
+        match export_opml_file(&expanded, &self.feeds) {
+            Ok(()) => {
+                let count = self.feeds.len();
+                self.opml_export_status = Some(format!("Exported {} feeds!", count));
+                self.opml_export_active = false;
+                self.opml_export_input.clear();
+            }
+            Err(e) => {
+                self.opml_export_status = Some(format!("Error: {}", e));
             }
         }
 

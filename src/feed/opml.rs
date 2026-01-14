@@ -2,7 +2,7 @@ use opml::{Outline, OPML};
 use std::path::Path;
 
 use crate::error::{AppError, Result};
-use crate::models::NewFeed;
+use crate::models::{Feed, NewFeed};
 
 pub fn parse_opml_file(path: &Path) -> Result<Vec<NewFeed>> {
     let content = std::fs::read_to_string(path)?;
@@ -31,4 +31,29 @@ fn collect_feeds(outlines: &[Outline], feeds: &mut Vec<NewFeed>) {
             collect_feeds(&outline.outlines, feeds);
         }
     }
+}
+
+pub fn export_opml_file(path: &Path, feeds: &[Feed]) -> Result<()> {
+    let mut opml = OPML::default();
+    opml.head = Some(opml::Head {
+        title: Some("SpeedyReader Feeds".to_string()),
+        ..Default::default()
+    });
+
+    for feed in feeds {
+        let outline = Outline {
+            text: feed.title.clone(),
+            r#type: Some("rss".to_string()),
+            xml_url: Some(feed.url.clone()),
+            html_url: feed.site_url.clone(),
+            description: feed.description.clone(),
+            ..Default::default()
+        };
+        opml.body.outlines.push(outline);
+    }
+
+    let content = opml.to_string().map_err(|e| AppError::OpmlParse(e.to_string()))?;
+    std::fs::write(path, content)?;
+
+    Ok(())
 }
