@@ -242,6 +242,46 @@ impl Repository {
         Ok(deleted)
     }
 
+    pub async fn compact_database(&self, days: i64) -> Result<(usize, usize)> {
+        let result = self
+            .conn
+            .call(move |conn| {
+                // Delete old articles first
+                conn.execute(
+                    r#"DELETE FROM summaries WHERE article_id IN (
+                        SELECT id FROM articles
+                        WHERE published_at < datetime('now', '-' || ?1 || ' days')
+                           OR (published_at IS NULL AND fetched_at < datetime('now', '-' || ?1 || ' days'))
+                    )"#,
+                    params![days],
+                )?;
+                conn.execute(
+                    r#"DELETE FROM saved_to_raindrop WHERE article_id IN (
+                        SELECT id FROM articles
+                        WHERE published_at < datetime('now', '-' || ?1 || ' days')
+                           OR (published_at IS NULL AND fetched_at < datetime('now', '-' || ?1 || ' days'))
+                    )"#,
+                    params![days],
+                )?;
+                let old_deleted = conn.execute(
+                    r#"DELETE FROM articles
+                       WHERE published_at < datetime('now', '-' || ?1 || ' days')
+                          OR (published_at IS NULL AND fetched_at < datetime('now', '-' || ?1 || ' days'))"#,
+                    params![days],
+                )?;
+
+                // Clear deleted_articles tracking table
+                let tracking_deleted = conn.execute("DELETE FROM deleted_articles", [])?;
+
+                // Vacuum to reclaim space
+                conn.execute("VACUUM", [])?;
+
+                Ok((old_deleted, tracking_deleted))
+            })
+            .await?;
+        Ok(result)
+    }
+
     // Summary operations
 
     pub async fn get_summary(&self, article_id: i64) -> Result<Option<Summary>> {

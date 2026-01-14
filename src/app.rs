@@ -141,7 +141,11 @@ impl App {
 
     pub async fn handle_action(&mut self, action: AppAction) -> Result<bool> {
         match action {
-            AppAction::Quit => return Ok(true),
+            AppAction::Quit => {
+                // Compact database on exit (remove old articles and vacuum)
+                let _ = self.repository.compact_database(7).await;
+                return Ok(true);
+            }
 
             AppAction::MoveUp => {
                 let len = self.filtered_articles().len();
