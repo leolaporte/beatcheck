@@ -215,7 +215,7 @@ impl Repository {
         Ok(deleted)
     }
 
-    pub async fn compact_database(&self, days: i64) -> Result<(usize, usize)> {
+    pub async fn compact_database(&self, days: i64) -> Result<usize> {
         let result = self
             .conn
             .call(move |conn| {
@@ -243,13 +243,16 @@ impl Repository {
                     params![days],
                 )?;
 
-                // Clear deleted_articles tracking table
-                let tracking_deleted = conn.execute("DELETE FROM deleted_articles", [])?;
+                // Clean up old deleted_articles tracking entries
+                conn.execute(
+                    "DELETE FROM deleted_articles WHERE deleted_at < datetime('now', '-' || ?1 || ' days')",
+                    params![days],
+                )?;
 
                 // Vacuum to reclaim space
                 conn.execute("VACUUM", [])?;
 
-                Ok((old_deleted, tracking_deleted))
+                Ok(old_deleted)
             })
             .await?;
         Ok(result)
