@@ -51,6 +51,7 @@ pub struct App {
     pub is_saved_to_raindrop: bool,
     pub last_deleted: Option<(i64, String)>, // (feed_id, guid) for undo
     pub spinner_frame: usize,
+    pub saved_count: usize,
 
     // Async state
     pub is_refreshing: bool,
@@ -121,6 +122,7 @@ impl App {
             is_saved_to_raindrop: false,
             last_deleted: None,
             spinner_frame: 0,
+            saved_count: 0,
             is_refreshing: false,
             summary_status: SummaryStatus::NotGenerated,
             pending_summary_article_id: None,
@@ -696,6 +698,7 @@ impl App {
                     .mark_saved_to_raindrop(article_id, raindrop_id, tags)
                     .await?;
                 self.is_saved_to_raindrop = true;
+                self.saved_count += 1;
                 tracing::info!("Saved to Raindrop: {}", url);
             }
             Err(e) => {

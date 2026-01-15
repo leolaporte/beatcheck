@@ -88,7 +88,8 @@ pub fn draw(frame: &mut Frame, app: &App) {
 
 fn render_header(frame: &mut Frame, app: &App, area: Rect) {
     let total_articles = app.articles.len();
-    let stats = format!(" {} Articles", total_articles);
+    let left_text = format!(" {} Articles", total_articles);
+    let right_text = format!("{} Saved ", app.saved_count);
 
     let block = Block::default()
         .title(" SpeedyReader ")
@@ -98,7 +99,19 @@ fn render_header(frame: &mut Frame, app: &App, area: Rect) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let paragraph = Paragraph::new(stats).style(Style::default().fg(Color::White));
+    // Calculate padding to right-justify the saved count
+    let available_width = inner.width as usize;
+    let left_len = left_text.len();
+    let right_len = right_text.len();
+    let padding = available_width.saturating_sub(left_len + right_len);
+
+    let line = Line::from(vec![
+        Span::styled(&left_text, Style::default().fg(Color::White)),
+        Span::raw(" ".repeat(padding)),
+        Span::styled(right_text, Style::default().fg(Color::White)),
+    ]);
+
+    let paragraph = Paragraph::new(line);
     frame.render_widget(paragraph, inner);
 }
 
