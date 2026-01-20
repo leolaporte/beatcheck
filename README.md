@@ -39,7 +39,32 @@ claude_api_key = "sk-ant-..."
 
 # Optional: Raindrop.io integration
 raindrop_token = "..."
+
+# Optional: Custom database path (default: ~/.local/share/speedy-reader/feeds.db)
+# db_path = "/path/to/feeds.db"
+
+# Optional: Refresh interval in minutes (default: 30)
+# refresh_interval_minutes = 30
+
+# Optional: Default tags for Raindrop bookmarks
+# default_tags = ["rss"]
 ```
+
+### Environment Variables
+
+Environment variables override config file values:
+
+| Variable | Description |
+|----------|-------------|
+| `CLAUDE_API_KEY` | Claude API key for summaries |
+| `RAINDROP_TOKEN` | Raindrop.io API token |
+
+### Data Locations
+
+| Path | Purpose |
+|------|---------|
+| `~/.config/speedy-reader/config.toml` | Configuration |
+| `~/.local/share/speedy-reader/feeds.db` | SQLite database |
 
 ## Usage
 

@@ -5,6 +5,6 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=%h/Projects/rss-reader/target/release/speedy-reader --refresh
+ExecStart=%h/.local/bin/speedy-reader --refresh
 Restart=on-failure
 RestartSec=5m
