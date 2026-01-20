@@ -92,7 +92,7 @@ fn render_header(frame: &mut Frame, app: &App, area: Rect) {
     let right_text = format!("{} Saved ", app.saved_count);
 
     let block = Block::default()
-        .title(" SpeedyReader ")
+        .title(" BeatCheck v1.2.0 ")
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Cyan));
 
@@ -220,7 +220,7 @@ fn render_summary(frame: &mut Frame, app: &App, area: Rect) {
         SummaryStatus::NotGenerated => "Press Enter to generate summary...".to_string(),
         SummaryStatus::Generating => format!("{} Generating summary...", app.spinner_char()),
         SummaryStatus::Failed => "Failed to generate summary. Press 'g' to retry.".to_string(),
-        SummaryStatus::NoApiKey => "Claude API key not configured.\n\nPlease add your API key to:\n~/.config/speedy-reader/config.toml\n\nExample:\nclaude_api_key = \"sk-ant-...\"".to_string(),
+        SummaryStatus::NoApiKey => "Claude API key not configured.\n\nPlease add your API key to:\n~/.config/beatcheck/config.toml\n\nExample:\nclaude_api_key = \"sk-ant-...\"".to_string(),
         SummaryStatus::Generated => app
             .current_summary
             .as_ref()

@@ -36,7 +36,7 @@ fn collect_feeds(outlines: &[Outline], feeds: &mut Vec<NewFeed>) {
 pub fn export_opml_file(path: &Path, feeds: &[Feed]) -> Result<()> {
     let mut opml = OPML::default();
     opml.head = Some(opml::Head {
-        title: Some("SpeedyReader Feeds".to_string()),
+        title: Some("BeatCheck Feeds".to_string()),
         ..Default::default()
     });
 

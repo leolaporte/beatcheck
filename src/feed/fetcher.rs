@@ -18,7 +18,7 @@ impl FeedFetcher {
         let client = Client::builder()
             .timeout(Duration::from_secs(30))
             .connect_timeout(Duration::from_secs(10))
-            .user_agent("speedy-reader/1.0")
+            .user_agent("beatcheck/1.2.0")
             .build()
             .expect("Failed to create HTTP client");
 

@@ -86,7 +86,7 @@ impl ContentFetcher {
         }
 
         // Firefox locks the database, so we need to copy it first
-        let temp_db = std::env::temp_dir().join("speedy-reader-cookies.sqlite");
+        let temp_db = std::env::temp_dir().join("beatcheck-cookies.sqlite");
         if let Err(e) = std::fs::copy(&cookies_db, &temp_db) {
             tracing::debug!("Failed to copy cookies database: {}", e);
             return Ok(String::new());
