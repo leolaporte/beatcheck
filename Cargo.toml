@@ -1,16 +1,16 @@
 [package]
-name = "speedy-reader"
+name = "beatcheck"
 version = "1.1.2"
 edition = "2021"
-description = "A TUI RSS reader with AI-powered summaries"
+description = "BeatCheck - A TUI RSS reader with AI-powered summaries"
 license = "MIT"
-repository = "https://github.com/leolaporte/rss-reader"
+repository = "https://github.com/leolaporte/beatcheck"
 readme = "README.md"
 keywords = ["rss", "tui", "reader", "cli"]
 categories = ["command-line-utilities"]
 
 [[bin]]
-name = "speedy-reader"
+name = "beatcheck"
 path = "src/main.rs"
 
 [profile.release]

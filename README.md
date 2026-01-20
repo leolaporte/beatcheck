@@ -1,4 +1,4 @@
-# SpeedyReader
+# BeatCheck
 
 A terminal-based RSS reader with AI-powered article summaries.
 
@@ -24,14 +24,14 @@ Built for personal use, entirely vibe coded with [Claude Code](https://claude.ai
 Requires Rust 1.70+:
 
 ```bash
-git clone https://github.com/leolaporte/rss-reader.git
-cd rss-reader
+git clone https://github.com/leolaporte/beatcheck.git
+cd beatcheck
 cargo install --path .
 ```
 
 ## Configuration
 
-Create `~/.config/speedy-reader/config.toml`:
+Create `~/.config/beatcheck/config.toml`:
 
 ```toml
 # Required for AI summaries
@@ -40,7 +40,7 @@ claude_api_key = "sk-ant-..."
 # Optional: Raindrop.io integration
 raindrop_token = "..."
 
-# Optional: Custom database path (default: ~/.local/share/speedy-reader/feeds.db)
+# Optional: Custom database path (default: ~/.local/share/beatcheck/feeds.db)
 # db_path = "/path/to/feeds.db"
 
 # Optional: Refresh interval in minutes (default: 30)
@@ -63,20 +63,20 @@ Environment variables override config file values:
 
 | Path | Purpose |
 |------|---------|
-| `~/.config/speedy-reader/config.toml` | Configuration |
-| `~/.local/share/speedy-reader/feeds.db` | SQLite database |
+| `~/.config/beatcheck/config.toml` | Configuration |
+| `~/.local/share/beatcheck/feeds.db` | SQLite database |
 
 ## Usage
 
 ```bash
 # Run the TUI
-speedy-reader
+beatcheck
 
 # Import OPML subscriptions
-speedy-reader --import feeds.opml
+beatcheck --import feeds.opml
 
 # Headless refresh (for cron/systemd)
-speedy-reader --refresh
+beatcheck --refresh
 ```
 
 ### Key Bindings
@@ -111,7 +111,7 @@ mkdir -p ~/.config/systemd/user
 cp systemd/*.{service,timer} ~/.config/systemd/user/
 
 # Enable timer
-systemctl --user enable --now speedy-reader-refresh.timer
+systemctl --user enable --now beatcheck-refresh.timer
 ```
 
 ## License

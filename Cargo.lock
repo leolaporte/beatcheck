@@ -63,6 +63,37 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
+name = "beatcheck"
+version = "1.1.2"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "crossterm",
+ "dirs",
+ "feed-rs",
+ "futures",
+ "html2text",
+ "open",
+ "opml",
+ "ratatui",
+ "regex",
+ "reqwest",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.17",
+ "tokio",
+ "tokio-rusqlite",
+ "tokio-test",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "urlencoding",
+]
+
+[[package]]
 name = "bitflags"
 version = "2.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1823,37 +1854,6 @@ checksum = "17129e116933cf371d018bb80ae557e889637989d8638274fb25622827b03881"
 dependencies = [
  "libc",
  "windows-sys 0.60.2",
-]
-
-[[package]]
-name = "speedy-reader"
-version = "1.1.2"
-dependencies = [
- "anyhow",
- "chrono",
- "crossterm",
- "dirs",
- "feed-rs",
- "futures",
- "html2text",
- "open",
- "opml",
- "ratatui",
- "regex",
- "reqwest",
- "rusqlite",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.17",
- "tokio",
- "tokio-rusqlite",
- "tokio-test",
- "toml",
- "tracing",
- "tracing-subscriber",
- "url",
- "urlencoding",
 ]
 
 [[package]]

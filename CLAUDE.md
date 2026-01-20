@@ -1,4 +1,4 @@
-# Speedy Reader (RSS Reader)
+# BeatCheck (RSS Reader)
 
 Central config: `~/.claude/CLAUDE.md`
 Rust rules: `~/.claude/rules/rust-projects.md`
@@ -20,7 +20,7 @@ cargo fmt                # Format
 
 - **Async TUI**: tokio + ratatui with non-blocking operations
 - **Database**: SQLite via tokio-rusqlite (7-day retention, auto-compaction)
-- **Config**: TOML at `~/.config/speedy-reader/config.toml`
+- **Config**: TOML at `~/.config/beatcheck/config.toml`
 
 ### Modules
 

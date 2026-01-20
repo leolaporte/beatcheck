@@ -1,10 +1,10 @@
 [Unit]
-Description=SpeedyReader Feed Refresh
+Description=BeatCheck Feed Refresh
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=%h/.local/bin/speedy-reader --refresh
+ExecStart=%h/.local/bin/beatcheck --refresh
 Restart=on-failure
 RestartSec=5m

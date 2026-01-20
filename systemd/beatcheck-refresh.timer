@@ -1,5 +1,5 @@
 [Unit]
-Description=SpeedyReader Feed Refresh Timer
+Description=BeatCheck Feed Refresh Timer
 
 [Timer]
 OnBootSec=5min
