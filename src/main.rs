@@ -27,10 +27,12 @@ use tui::{draw, handle_key_event};
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize logging (only show warnings and errors by default)
+    // Filter out html5ever warnings which corrupt the TUI display
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive(tracing::Level::WARN.into()),
+                .add_directive(tracing::Level::WARN.into())
+                .add_directive("html5ever=error".parse().unwrap()),
         )
         .with_writer(std::io::stderr)
         .init();

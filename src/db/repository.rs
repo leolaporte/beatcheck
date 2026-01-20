@@ -18,6 +18,8 @@ impl Repository {
         conn.call(|conn| {
             // Set busy timeout to 5 seconds to handle concurrent access
             conn.busy_timeout(std::time::Duration::from_secs(5))?;
+            // Enable WAL mode for better concurrency
+            conn.execute_batch("PRAGMA journal_mode=WAL;")?;
             conn.execute_batch(SCHEMA)?;
             Ok(())
         })

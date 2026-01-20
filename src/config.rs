@@ -46,15 +46,24 @@ impl Config {
     pub fn load() -> Result<Self> {
         let config_path = Self::config_path();
 
-        if config_path.exists() {
+        let mut config = if config_path.exists() {
             let content = std::fs::read_to_string(&config_path)?;
-            let config: Config = toml::from_str(&content)?;
-            Ok(config)
+            toml::from_str(&content)?
         } else {
             let config = Config::default();
             config.save()?;
-            Ok(config)
+            config
+        };
+
+        // Environment variables override config file values
+        if let Ok(key) = std::env::var("CLAUDE_API_KEY") {
+            config.claude_api_key = Some(key);
         }
+        if let Ok(token) = std::env::var("RAINDROP_TOKEN") {
+            config.raindrop_token = Some(token);
+        }
+
+        Ok(config)
     }
 
     pub fn save(&self) -> Result<()> {

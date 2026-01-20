@@ -117,7 +117,7 @@ pub fn handle_key_event(
         (KeyCode::Char('e'), _) => Some(AppAction::EmailArticle),
         (KeyCode::Char('b'), _) => Some(AppAction::SaveToRaindrop),
         (KeyCode::Char('g'), _) => Some(AppAction::RegenerateSummary),
-        (KeyCode::Char('d'), KeyModifiers::NONE) => Some(AppAction::DeleteArticle),
+        (KeyCode::Char('d'), KeyModifiers::NONE) | (KeyCode::Backspace, _) => Some(AppAction::DeleteArticle),
         (KeyCode::Char('D'), KeyModifiers::SHIFT) => Some(AppAction::DeleteFeed),
         (KeyCode::Char('u'), _) => Some(AppAction::UndeleteArticle),
         (KeyCode::Char('a'), _) => Some(AppAction::AddFeed),

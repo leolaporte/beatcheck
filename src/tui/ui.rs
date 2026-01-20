@@ -402,7 +402,7 @@ fn render_help(frame: &mut Frame) {
         "   e        Email article",
         "   b        Save to Raindrop.io",
         "   g        Regenerate summary",
-        "   d        Delete article",
+        "   d / ⌫    Delete article",
         "   D        Delete feed",
         "   u        Undelete last",
         "",
