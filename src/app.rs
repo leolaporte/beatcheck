@@ -4,6 +4,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 
 use crate::ai::Summarizer;
+use crate::blocklist::Blocklist;
 use crate::config::Config;
 use crate::db::Repository;
 use crate::error::Result;
@@ -33,6 +34,7 @@ pub struct App {
     pub feeds: Vec<Feed>,
     pub articles: Vec<Article>,
     pub current_summary: Option<Summary>,
+    blocklist: Blocklist,
 
     // UI State
     pub selected_index: usize,
@@ -102,10 +104,13 @@ impl App {
         let (refresh_tx, refresh_rx) = mpsc::channel(1);
         let (discovery_tx, discovery_rx) = mpsc::channel(1);
 
+        let blocklist = Blocklist::load();
+
         Ok(Self {
             feeds,
             articles,
             current_summary: None,
+            blocklist,
             selected_index: 0,
             show_help: false,
             tag_input_active: false,
@@ -147,6 +152,10 @@ impl App {
     pub fn selected_article(&self) -> Option<&Article> {
         let articles = self.filtered_articles();
         articles.get(self.selected_index).copied()
+    }
+
+    pub fn blocklist(&self) -> &Blocklist {
+        &self.blocklist
     }
 
     pub async fn handle_action(&mut self, action: AppAction) -> Result<bool> {
@@ -598,6 +607,7 @@ impl App {
             return; // Already refreshing
         }
         self.is_refreshing = true;
+        self.blocklist.reload();
 
         let feeds = self.feeds.clone();
         let fetcher = self.fetcher.clone();

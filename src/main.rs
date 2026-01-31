@@ -11,6 +11,7 @@ use ratatui::prelude::*;
 
 mod ai;
 mod app;
+mod blocklist;
 mod config;
 mod db;
 mod error;
