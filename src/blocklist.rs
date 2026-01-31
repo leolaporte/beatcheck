@@ -3,6 +3,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::SystemTime;
 
+use regex::Regex;
+
 pub struct Blocklist {
     keywords: HashSet<String>,
     last_modified: Option<SystemTime>,
@@ -63,6 +65,49 @@ impl Blocklist {
 
     pub fn is_empty(&self) -> bool {
         self.keywords.is_empty()
+    }
+
+    /// Check if any blocked keyword appears as a whole word in the title or content.
+    /// Returns true if a keyword is found (article should be filtered).
+    pub fn contains_blocked_keyword(&self, title: &str, content: Option<&str>) -> bool {
+        // Empty blocklist means no filtering
+        if self.keywords.is_empty() {
+            return false;
+        }
+
+        // Check title first (short-circuit on match)
+        if self.check_text_for_keywords(title) {
+            return true;
+        }
+
+        // Check content if available
+        if let Some(content_text) = content {
+            if self.check_text_for_keywords(content_text) {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    /// Check if any keyword appears as a whole word in the given text.
+    fn check_text_for_keywords(&self, text: &str) -> bool {
+        // Convert text to lowercase for case-insensitive matching
+        let text_lower = text.to_lowercase();
+
+        for keyword in &self.keywords {
+            // Build regex with word boundaries: \bkeyword\b
+            // Escape the keyword to handle special regex characters
+            let pattern = format!(r"\b{}\b", regex::escape(keyword));
+
+            if let Ok(re) = Regex::new(&pattern) {
+                if re.is_match(&text_lower) {
+                    return true;
+                }
+            }
+        }
+
+        false
     }
 
     fn blocklist_path() -> PathBuf {
@@ -186,5 +231,94 @@ mod tests {
         blocklist.reload();
         // mtime should be unchanged if file wasn't modified
         assert_eq!(blocklist.last_modified, initial_mtime);
+    }
+
+    #[test]
+    fn test_contains_blocked_keyword_in_title() {
+        // Create blocklist with "bitcoin" keyword
+        let mut blocklist = Blocklist {
+            keywords: HashSet::new(),
+            last_modified: None,
+        };
+        blocklist.keywords.insert("bitcoin".to_string());
+
+        // Should match case-insensitively
+        assert!(blocklist.contains_blocked_keyword("Bitcoin news today", None));
+        assert!(blocklist.contains_blocked_keyword("BITCOIN price drops", None));
+        assert!(blocklist.contains_blocked_keyword("Why bitcoin matters", None));
+
+        // Should not match if keyword is not present
+        assert!(!blocklist.contains_blocked_keyword("Tech news today", None));
+    }
+
+    #[test]
+    fn test_contains_blocked_keyword_in_content() {
+        let mut blocklist = Blocklist {
+            keywords: HashSet::new(),
+            last_modified: None,
+        };
+        blocklist.keywords.insert("crypto".to_string());
+
+        // Should match in content even if not in title
+        assert!(blocklist.contains_blocked_keyword(
+            "Tech news",
+            Some("This article discusses crypto markets")
+        ));
+
+        // Should match in title (short-circuit, doesn't check content)
+        assert!(blocklist.contains_blocked_keyword(
+            "Crypto news",
+            Some("Some other content")
+        ));
+    }
+
+    #[test]
+    fn test_word_boundary_respects_partial() {
+        let mut blocklist = Blocklist {
+            keywords: HashSet::new(),
+            last_modified: None,
+        };
+        blocklist.keywords.insert("crypto".to_string());
+
+        // Should NOT match when keyword is part of a larger word
+        assert!(!blocklist.contains_blocked_keyword("I love cryptocurrency", None));
+        assert!(!blocklist.contains_blocked_keyword("cryptocurrencies are rising", None));
+
+        // Should NOT match in content either
+        assert!(!blocklist.contains_blocked_keyword(
+            "Tech news",
+            Some("The cryptocurrency market is volatile")
+        ));
+    }
+
+    #[test]
+    fn test_word_boundary_matches_whole() {
+        let mut blocklist = Blocklist {
+            keywords: HashSet::new(),
+            last_modified: None,
+        };
+        blocklist.keywords.insert("crypto".to_string());
+
+        // Should match when keyword appears as whole word
+        assert!(blocklist.contains_blocked_keyword("I love crypto", None));
+        assert!(blocklist.contains_blocked_keyword("Crypto is volatile", None));
+        assert!(blocklist.contains_blocked_keyword("Bitcoin and crypto news", None));
+
+        // With punctuation boundaries
+        assert!(blocklist.contains_blocked_keyword("What is crypto?", None));
+        assert!(blocklist.contains_blocked_keyword("crypto, bitcoin, and NFTs", None));
+    }
+
+    #[test]
+    fn test_empty_blocklist_matches_nothing() {
+        let blocklist = Blocklist {
+            keywords: HashSet::new(),
+            last_modified: None,
+        };
+
+        // Empty blocklist should never match
+        assert!(!blocklist.contains_blocked_keyword("Bitcoin news", None));
+        assert!(!blocklist.contains_blocked_keyword("Crypto markets", Some("cryptocurrency")));
+        assert!(!blocklist.contains_blocked_keyword("Any content", Some("Any other content")));
     }
 }
