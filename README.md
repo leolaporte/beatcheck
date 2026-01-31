@@ -13,6 +13,7 @@ Built for personal use, entirely vibe coded with [Claude Code](https://claude.ai
 - **Delete/Undelete**: Remove articles with undo support
 - **OPML import/export**: Import and export feed subscriptions
 - **Day-of-week display**: Articles prefixed with publication day (Mon, Tue, etc.)
+- **Keyword filtering**: Block articles by keyword (case-insensitive, word boundaries)
 - **SQLite caching**: Offline reading with 7-day retention
 - **Auto-compaction**: Database cleaned and vacuumed on exit
 - **Auto-mark read**: Articles marked read after 2 seconds
@@ -64,7 +65,26 @@ Environment variables override config file values:
 | Path | Purpose |
 |------|---------|
 | `~/.config/beatcheck/config.toml` | Configuration |
+| `~/.config/beatcheck/blocklist.txt` | Keyword blocklist (optional) |
 | `~/.local/share/beatcheck/feeds.db` | SQLite database |
+
+## Keyword Filtering
+
+Block articles by adding keywords to `~/.config/beatcheck/blocklist.txt` (one keyword per line):
+
+```
+bitcoin
+cryptocurrency
+politics
+```
+
+**Features:**
+- **Case-insensitive**: "Bitcoin", "BITCOIN", and "bitcoin" all match
+- **Word boundaries**: "crypto" matches "I love crypto" but NOT "cryptocurrency"
+- **Silent filtering**: Blocked articles never appear in the UI
+- **Auto-reload**: Blocklist reloads on each feed refresh
+
+Articles containing any blocked keyword in their title or content are filtered during refresh before database insertion.
 
 ## Usage
 
