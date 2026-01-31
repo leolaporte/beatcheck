@@ -56,14 +56,14 @@ jobs:
       - name: Package
         run: |
           cd target/${{ matrix.target }}/release
-          tar -czvf ../../../speedy-reader-${{ matrix.name }}.tar.gz speedy-reader
+          tar -czvf ../../../beatcheck-${{ matrix.name }}.tar.gz beatcheck
           cd ../../..
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: speedy-reader-${{ matrix.name }}
-          path: speedy-reader-${{ matrix.name }}.tar.gz
+          name: beatcheck-${{ matrix.name }}
+          path: beatcheck-${{ matrix.name }}.tar.gz
 
   release:
     needs: build
