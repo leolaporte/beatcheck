@@ -29,13 +29,54 @@ use tui::{draw, handle_key_event};
 async fn main() -> Result<()> {
     // Initialize logging (only show warnings and errors by default)
     // Filter out html5ever warnings which corrupt the TUI display
+    // Also write to /tmp/beatcheck-errors.log
+    use std::fs::OpenOptions;
+    use std::io::Write;
+    use tracing_subscriber::fmt::MakeWriter;
+
+    let log_file = std::sync::Arc::new(std::sync::Mutex::new(
+        OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("/tmp/beatcheck-errors.log")
+            .expect("Failed to open log file"),
+    ));
+
+    struct DualWriter {
+        file: std::sync::Arc<std::sync::Mutex<std::fs::File>>,
+    }
+
+    impl Write for DualWriter {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            let _ = self.file.lock().unwrap().write_all(buf);
+            std::io::stderr().write(buf)
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            let _ = self.file.lock().unwrap().flush();
+            std::io::stderr().flush()
+        }
+    }
+
+    impl<'a> MakeWriter<'a> for DualWriter {
+        type Writer = DualWriter;
+
+        fn make_writer(&'a self) -> Self::Writer {
+            DualWriter {
+                file: self.file.clone(),
+            }
+        }
+    }
+
+    let dual_writer = DualWriter { file: log_file };
+
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()
                 .add_directive(tracing::Level::WARN.into())
                 .add_directive("html5ever=error".parse().unwrap()),
         )
-        .with_writer(std::io::stderr)
+        .with_writer(dual_writer)
         .init();
 
     // Parse command line arguments
