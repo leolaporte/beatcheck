@@ -798,12 +798,8 @@ impl App {
         let feeds = parse_opml_file(path)?;
 
         for feed in feeds {
-            match self.repository.insert_feed(feed).await {
-                Ok(_) => {}
-                Err(e) => {
-                    tracing::warn!("Failed to insert feed: {}", e);
-                }
-            }
+            // Silently ignore duplicates (UNIQUE constraint on url)
+            let _ = self.repository.insert_feed(feed).await;
         }
 
         self.feeds = self.repository.get_all_feeds().await?;
