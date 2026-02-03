@@ -134,6 +134,26 @@ cp systemd/*.{service,timer} ~/.config/systemd/user/
 systemctl --user enable --now beatcheck-refresh.timer
 ```
 
+## Browser Cookie Support
+
+BeatCheck loads browser cookies to access paywalled content from sites you're logged into.
+
+**Supported Browsers:**
+- **Chrome/Chromium** (tried first)
+- **Firefox** (fallback)
+
+**How it works:**
+1. Loads cookies from browser database before fetching articles
+2. Filters expired cookies automatically
+3. Applies relevant cookies to each article request
+4. Enables access to paywalled sites you have subscriptions to
+
+**Requirements:**
+- Must be logged into the site in your browser
+- Browser must store persistent cookies (not incognito/private mode)
+
+**Note:** Cookies are only read locally and used for article fetching. They are never uploaded or shared.
+
 ## License
 
 MIT
