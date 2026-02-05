@@ -12,6 +12,7 @@ pub enum AppAction {
     OpenInBrowser,
     EmailArticle,
     SaveToRaindrop,
+    SaveToRaindropWithTag(String), // Quick bookmark with preset tag
     RegenerateSummary,
     DeleteArticle,
     DeleteFeed,
@@ -41,6 +42,9 @@ pub enum AppAction {
     OpmlExportBackspace,
     OpmlExportConfirm,
     OpmlExportCancel,
+    // Space prefix mode for quick bookmarks
+    BookmarkPrefixStart,
+    CancelBookmarkPrefix,
 }
 
 pub fn handle_key_event(
@@ -50,10 +54,22 @@ pub fn handle_key_event(
     opml_input_active: bool,
     opml_export_active: bool,
     show_help: bool,
+    bookmark_prefix_active: bool,
 ) -> Option<AppAction> {
     // If help is showing, any key closes it
     if show_help {
         return Some(AppAction::HideHelp);
+    }
+
+    // Space prefix mode (waiting for second key after Space)
+    if bookmark_prefix_active {
+        return match key.code {
+            KeyCode::Char('t') => Some(AppAction::SaveToRaindropWithTag("twit".to_string())),
+            KeyCode::Char('i') => Some(AppAction::SaveToRaindropWithTag("im".to_string())),
+            KeyCode::Char('m') => Some(AppAction::SaveToRaindropWithTag("mbw".to_string())),
+            KeyCode::Esc => Some(AppAction::CancelBookmarkPrefix),
+            _ => Some(AppAction::CancelBookmarkPrefix), // Any other key cancels
+        };
     }
 
     // Tag input mode
@@ -116,6 +132,7 @@ pub fn handle_key_event(
         (KeyCode::Char('o'), _) => Some(AppAction::OpenInBrowser),
         (KeyCode::Char('e'), _) => Some(AppAction::EmailArticle),
         (KeyCode::Char('b'), _) => Some(AppAction::SaveToRaindrop),
+        (KeyCode::Char(' '), _) => Some(AppAction::BookmarkPrefixStart),
         (KeyCode::Char('g'), _) => Some(AppAction::RegenerateSummary),
         (KeyCode::Char('d'), KeyModifiers::NONE) | (KeyCode::Backspace, _) => Some(AppAction::DeleteArticle),
         (KeyCode::Char('D'), KeyModifiers::SHIFT) => Some(AppAction::DeleteFeed),

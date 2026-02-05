@@ -166,15 +166,34 @@ fn render_article_list(frame: &mut Frame, app: &App, area: Rect) {
 }
 
 fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
-    let status = if app.is_refreshing {
-        format!("{} Refreshing...", app.spinner_char())
+    // Left side: main status
+    let left_status = if app.is_refreshing {
+        (format!("{} Refreshing...", app.spinner_char()), Color::DarkGray)
     } else if matches!(app.summary_status, SummaryStatus::Generating) {
-        format!("{} Summarizing...", app.spinner_char())
+        (format!("{} Summarizing...", app.spinner_char()), Color::DarkGray)
+    } else if app.bookmark_prefix_active {
+        ("Space: t=twit  i=im  m=mbw".to_string(), Color::Yellow)
     } else {
-        "j/k:move  Enter:summarize  o:open  d:delete  a:add  ?:help  q:quit".to_string()
+        ("j/k:move  Enter:summarize  o:open  d:delete  a:add  ?:help  q:quit".to_string(), Color::DarkGray)
     };
 
-    let paragraph = Paragraph::new(status).style(Style::default().fg(Color::DarkGray));
+    // Right side: bookmark status (if any)
+    let right_status = app.bookmark_status.as_ref().map(|(msg, _)| format!("✓ {} ", msg));
+
+    // Calculate padding for right-aligned text
+    let right_text = right_status.unwrap_or_default();
+    let left_width = left_status.0.len();
+    let right_width = right_text.len();
+    let total_width = area.width as usize;
+    let padding = total_width.saturating_sub(left_width + right_width);
+
+    let line = Line::from(vec![
+        Span::styled(left_status.0, Style::default().fg(left_status.1)),
+        Span::raw(" ".repeat(padding)),
+        Span::styled(right_text, Style::default().fg(Color::LightGreen)),
+    ]);
+
+    let paragraph = Paragraph::new(line);
     frame.render_widget(paragraph, area);
 }
 
@@ -400,7 +419,8 @@ fn render_help(frame: &mut Frame) {
         "   w        Export OPML file",
         "   o        Open in browser",
         "   e        Email article",
-        "   b        Save to Raindrop.io",
+        "   b        Bookmark to Raindrop.io (enter tags)",
+        "   Space+t/i/m  Quick bookmark (twit/im/mbw)",
         "   g        Regenerate summary",
         "   d / ⌫    Delete article",
         "   D        Delete feed",

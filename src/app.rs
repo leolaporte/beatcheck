@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Instant;
 
 use tokio::sync::mpsc;
 
@@ -39,6 +40,8 @@ pub struct App {
     // UI State
     pub selected_index: usize,
     pub show_help: bool,
+    pub bookmark_prefix_active: bool,
+    pub bookmark_status: Option<(String, Instant)>, // (message, timestamp)
     pub tag_input_active: bool,
     pub tag_input: String,
     pub feed_input_active: bool,
@@ -113,6 +116,8 @@ impl App {
             blocklist,
             selected_index: 0,
             show_help: false,
+            bookmark_prefix_active: false,
+            bookmark_status: None,
             tag_input_active: false,
             tag_input: String::new(),
             feed_input_active: false,
@@ -221,10 +226,27 @@ impl App {
                 }
             }
 
+            AppAction::BookmarkPrefixStart => {
+                if self.raindrop.is_some() && self.selected_article().is_some() {
+                    self.bookmark_prefix_active = true;
+                }
+            }
+
+            AppAction::CancelBookmarkPrefix => {
+                self.bookmark_prefix_active = false;
+            }
+
             AppAction::SaveToRaindrop => {
                 if self.raindrop.is_some() && self.selected_article().is_some() {
                     self.tag_input_active = true;
                     self.tag_input.clear();
+                }
+            }
+
+            AppAction::SaveToRaindropWithTag(tag) => {
+                if self.raindrop.is_some() && self.selected_article().is_some() {
+                    self.bookmark_prefix_active = false;
+                    self.save_to_raindrop_with_tag(&tag).await?;
                 }
             }
 
@@ -390,6 +412,7 @@ impl App {
         self.summary_status = SummaryStatus::NotGenerated;
         self.current_summary = None;
         self.is_saved_to_raindrop = false;
+        self.bookmark_status = None;
 
         // Check if current article is saved to raindrop
         let article_id = self.selected_article().map(|a| a.id);
@@ -487,6 +510,15 @@ impl App {
     pub fn spinner_char(&self) -> char {
         const SPINNER: [char; 10] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
         SPINNER[self.spinner_frame]
+    }
+
+    /// Clear bookmark status after 2 seconds
+    pub fn check_bookmark_status_timeout(&mut self) {
+        if let Some((_, timestamp)) = &self.bookmark_status {
+            if timestamp.elapsed().as_secs() >= 2 {
+                self.bookmark_status = None;
+            }
+        }
     }
 
     /// Poll for completed summary results (non-blocking)
@@ -714,19 +746,81 @@ impl App {
             .await
         {
             Ok(raindrop_id) => {
+                let tags_display = if tags.is_empty() {
+                    String::new()
+                } else {
+                    format!(" [{}]", tags.join(", "))
+                };
                 self.repository
                     .mark_saved_to_raindrop(article_id, raindrop_id, tags)
                     .await?;
                 self.is_saved_to_raindrop = true;
                 self.saved_count += 1;
+                self.bookmark_status = Some((format!("Bookmarked{}", tags_display), Instant::now()));
                 tracing::info!("Saved to Raindrop: {}", url);
             }
             Err(e) => {
+                self.bookmark_status = Some(("Bookmark failed".to_string(), Instant::now()));
                 tracing::error!("Failed to save to Raindrop: {}", e);
             }
         }
 
         // Don't reload - keep article visible in filtered list this session
+
+        Ok(())
+    }
+
+    /// Save to Raindrop with a preset tag (no user input needed)
+    async fn save_to_raindrop_with_tag(&mut self, tag: &str) -> Result<()> {
+        let Some(raindrop) = &self.raindrop else {
+            return Ok(());
+        };
+
+        let Some(article) = self.selected_article() else {
+            return Ok(());
+        };
+
+        let tags = vec![tag.to_string()];
+
+        let article_id = article.id;
+        let url = article.url.clone();
+        let title = article.title.clone();
+
+        // Get excerpt: first sentence of summary (cleaned), or first sentence of article content
+        let excerpt = self
+            .current_summary
+            .as_ref()
+            .map(|s| Self::clean_summary_for_excerpt(&s.content))
+            .filter(|s| !s.is_empty())
+            .or_else(|| {
+                article
+                    .content_text
+                    .as_ref()
+                    .or(article.content.as_ref())
+                    .map(|c| Self::get_first_sentence(c))
+            });
+
+        // Get AI summary for note field (if available)
+        let note = self.current_summary.as_ref().map(|s| s.content.clone());
+
+        match raindrop
+            .save_bookmark(&url, Some(&title), excerpt.as_deref(), note.as_deref(), tags.clone())
+            .await
+        {
+            Ok(raindrop_id) => {
+                self.repository
+                    .mark_saved_to_raindrop(article_id, raindrop_id, tags)
+                    .await?;
+                self.is_saved_to_raindrop = true;
+                self.saved_count += 1;
+                self.bookmark_status = Some((format!("Bookmarked [{}]", tag), Instant::now()));
+                tracing::info!("Saved to Raindrop with tag '{}': {}", tag, url);
+            }
+            Err(e) => {
+                self.bookmark_status = Some(("Bookmark failed".to_string(), Instant::now()));
+                tracing::error!("Failed to save to Raindrop: {}", e);
+            }
+        }
 
         Ok(())
     }
