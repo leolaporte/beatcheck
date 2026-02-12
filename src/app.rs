@@ -75,6 +75,9 @@ pub struct App {
     summarizer: Option<Arc<Summarizer>>,
     raindrop: Option<RaindropClient>,
     content_fetcher: ContentFetcher,
+
+    // Config
+    browser_app_id: String,
 }
 
 impl App {
@@ -147,6 +150,7 @@ impl App {
             summarizer,
             raindrop,
             content_fetcher,
+            browser_app_id: config.browser_app_id.clone(),
         })
     }
 
@@ -214,8 +218,14 @@ impl App {
             AppAction::OpenInBrowser => {
                 if let Some(article) = self.selected_article() {
                     let url = article.url.clone();
+                    let app_id = self.browser_app_id.clone();
                     std::thread::spawn(move || {
                         let _ = open::that(&url);
+                        // Focus the browser window in Sway
+                        let selector = format!("[app_id=\"{}\"]", app_id);
+                        let _ = std::process::Command::new("swaymsg")
+                            .args([&selector, "focus"])
+                            .output();
                     });
                 }
             }
