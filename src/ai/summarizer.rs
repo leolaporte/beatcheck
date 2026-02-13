@@ -13,6 +13,7 @@ struct MessageRequest {
     model: String,
     max_tokens: u32,
     messages: Vec<Message>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     system: Option<String>,
 }
 
