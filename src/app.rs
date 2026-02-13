@@ -864,8 +864,16 @@ impl App {
 
     /// Clean AI summary prefixes and extract first sentence for Raindrop excerpt
     fn clean_summary_for_excerpt(summary: &str) -> String {
-        // Common AI summary prefixes to strip
+        // Smart Brevity label prefixes to strip (checked case-insensitively)
         let prefixes = [
+            "what's happening:",
+            "the product:",
+            "why it matters:",
+            "the big picture:",
+            "cost:",
+            "availability:",
+            "platforms:",
+            // Legacy bullet-point format
             "summary:",
             "here's the summary of the article:",
             "here's a summary of the article:",
@@ -877,15 +885,15 @@ impl App {
             "here is a summary:",
         ];
 
-        // Skip blank lines and find first non-empty line
-        let mut text = summary
+        // Get first non-empty line
+        let first_line = summary
             .lines()
             .map(|line| line.trim())
-            .skip_while(|line| line.is_empty())
-            .collect::<Vec<_>>()
-            .join(" ");
+            .find(|line| !line.is_empty())
+            .unwrap_or("");
 
-        // Strip common prefixes (case-insensitive)
+        // Strip label prefix if present (case-insensitive)
+        let mut text = first_line.to_string();
         let text_lower = text.to_lowercase();
         for prefix in &prefixes {
             if text_lower.starts_with(prefix) {
@@ -894,7 +902,11 @@ impl App {
             }
         }
 
-        // Extract first sentence
+        // Also strip bullet prefix from legacy format
+        if text.starts_with("• ") {
+            text = text["• ".len()..].to_string();
+        }
+
         Self::get_first_sentence(&text)
     }
 
