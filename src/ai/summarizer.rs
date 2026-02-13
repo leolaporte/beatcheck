@@ -54,11 +54,6 @@ impl Summarizer {
         article_title: &str,
         article_content: &str,
     ) -> Result<String> {
-        let system_prompt = r#"Summarize this article as 3-5 bullet points.
-Output ONLY the bullet points - no introductions, conclusions, or commentary.
-Start each line with "• " and state one key fact or finding.
-Never write phrases like "Here are the key points" or "In summary" - just the bullets."#;
-
         // Truncate content if too long (find valid UTF-8 boundary)
         let content = if article_content.len() > 10000 {
             let mut end = 10000;
@@ -71,7 +66,36 @@ Never write phrases like "Here are the key points" or "In summary" - just the bu
         };
 
         let user_message = format!(
-            "Please summarize the following article:\n\nTitle: {}\n\nContent:\n{}",
+            r#"You are a journalist writing in Axios Smart Brevity style. Summarize the article below using the appropriate format.
+
+First, determine: Is this article primarily about a specific PRODUCT (hardware, software, app, device) or is it EDITORIAL (news, policy, analysis, industry event)?
+
+RULES:
+1. Use ONLY information from the article - no external knowledge
+2. Each section should be 1-2 concise sentences
+3. If the article has insufficient content, respond with just: "Insufficient content for summary"
+4. If there are direct quotes with clear speaker attribution, include the most important one
+5. Output ONLY the summary lines below - no introductions, conclusions, or commentary
+
+If EDITORIAL, respond in this exact format:
+What's happening: One strong sentence capturing the core news or development.
+Why it matters: 1-2 sentences explaining why this is significant.
+The big picture: One sentence on broader industry or societal implications. Omit this line if the article is too narrow for broader context.
+"quote text" -- Speaker Name
+
+If PRODUCT, respond in this exact format:
+The product: What the product is and what it does (1-2 sentences).
+Cost: Pricing details. Omit this line if pricing is not mentioned.
+Availability: When and where it is available. Omit this line if not mentioned.
+Platforms: What platforms or operating systems it runs on. Omit this line for hardware-only products or if not mentioned.
+"quote text" -- Speaker Name
+
+Omit the quote line if there are no quotes or no clear speaker attribution in the article.
+
+Title: {}
+
+Article:
+{}"#,
             article_title, content
         );
 
@@ -82,7 +106,7 @@ Never write phrases like "Here are the key points" or "In summary" - just the bu
                 role: "user".to_string(),
                 content: user_message,
             }],
-            system: Some(system_prompt.to_string()),
+            system: None,
         };
 
         let response = self
