@@ -892,19 +892,19 @@ impl App {
             .find(|line| !line.is_empty())
             .unwrap_or("");
 
-        // Strip label prefix if present (case-insensitive)
+        // Strip bullet prefix from legacy format first
         let mut text = first_line.to_string();
+        if text.starts_with("• ") {
+            text = text["• ".len()..].to_string();
+        }
+
+        // Strip label prefix if present (case-insensitive)
         let text_lower = text.to_lowercase();
         for prefix in &prefixes {
             if text_lower.starts_with(prefix) {
                 text = text[prefix.len()..].trim_start().to_string();
                 break;
             }
-        }
-
-        // Also strip bullet prefix from legacy format
-        if text.starts_with("• ") {
-            text = text["• ".len()..].to_string();
         }
 
         Self::get_first_sentence(&text)
