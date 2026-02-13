@@ -77,6 +77,7 @@ RULES:
 3. If the article has insufficient content, respond with just: "Insufficient content for summary"
 4. If there are direct quotes with clear speaker attribution, include the most important one
 5. Output ONLY the summary lines below - no introductions, conclusions, or commentary
+6. Do NOT state the format type (e.g. "This is an EDITORIAL summary") - just start with the first line
 
 If EDITORIAL, respond in this exact format:
 What's happening: One strong sentence capturing the core news or development.
@@ -133,6 +134,19 @@ Article:
             .filter_map(|block| block.text)
             .collect::<Vec<_>>()
             .join("\n");
+
+        // Strip preamble lines like "This is an EDITORIAL summary"
+        let summary = summary
+            .lines()
+            .filter(|line| {
+                let lower = line.trim().to_lowercase();
+                !lower.starts_with("this is an editorial")
+                    && !lower.starts_with("this is a product")
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+            .trim()
+            .to_string();
 
         Ok(summary)
     }
