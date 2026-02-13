@@ -50,6 +50,20 @@ cargo fmt                # Format
 
 Braille animation: `⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏`
 
+## AI Summary Format (Smart Brevity)
+
+The summarizer uses Axios-style Smart Brevity, auto-detecting Editorial vs Product format. Output is plain text (not structured/parsed). The prompt lives in `src/ai/summarizer.rs`.
+
+- **Editorial:** What's happening / Why it matters / The big picture + optional quote
+- **Product:** The product / Cost / Availability / Platforms + optional quote
+- Response filter strips preamble lines ("This is an EDITORIAL summary")
+- Excerpt cleaner in `app.rs:clean_summary_for_excerpt()` strips label prefixes for Raindrop bookmarks
+- Shared design with `~/Projects/briefing/` but BeatCheck uses human-readable labels (not `SCREAMING_SNAKE` keys) since text is displayed directly in the TUI
+
+### Claude API Gotcha
+
+The `MessageRequest.system` field must use `#[serde(skip_serializing_if = "Option::is_none")]`. The API rejects `"system": null` — the key must be omitted entirely when unused.
+
 ## Recent Changes (2026-02-01)
 
 ### Browser Cookie Support Enhancement
