@@ -16,9 +16,6 @@ pub struct Config {
 
     #[serde(default)]
     pub default_tags: Vec<String>,
-
-    #[serde(default = "default_browser_app_id")]
-    pub browser_app_id: String,
 }
 
 fn default_db_path() -> String {
@@ -33,10 +30,6 @@ fn default_refresh_interval() -> u32 {
     30
 }
 
-fn default_browser_app_id() -> String {
-    "zen".to_string()
-}
-
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -45,7 +38,6 @@ impl Default for Config {
             raindrop_token: None,
             refresh_interval_minutes: default_refresh_interval(),
             default_tags: vec!["rss".to_string()],
-            browser_app_id: default_browser_app_id(),
         }
     }
 }
@@ -225,7 +217,6 @@ refresh_interval_minutes = "not a number"
             raindrop_token: None,
             refresh_interval_minutes: 45,
             default_tags: vec!["a".to_string(), "b".to_string()],
-            browser_app_id: "zen".to_string(),
         };
 
         let toml = config.to_string().unwrap();
@@ -244,7 +235,6 @@ refresh_interval_minutes = "not a number"
             raindrop_token: Some("token456".to_string()),
             refresh_interval_minutes: 120,
             default_tags: vec!["tag1".to_string(), "tag2".to_string(), "tag3".to_string()],
-            browser_app_id: "firefox".to_string(),
         };
 
         let toml = original.to_string().unwrap();
@@ -255,7 +245,6 @@ refresh_interval_minutes = "not a number"
         assert_eq!(parsed.raindrop_token, original.raindrop_token);
         assert_eq!(parsed.refresh_interval_minutes, original.refresh_interval_minutes);
         assert_eq!(parsed.default_tags, original.default_tags);
-        assert_eq!(parsed.browser_app_id, original.browser_app_id);
     }
 
     // ==================== Edge cases ====================
