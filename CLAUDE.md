@@ -50,15 +50,14 @@ cargo fmt                # Format
 
 Braille animation: `⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏`
 
-## AI Summary Format (Smart Brevity)
+## AI Summary Format (LEDE/NUTGRAF)
 
-The summarizer uses Axios-style Smart Brevity, auto-detecting Editorial vs Product format. Output is plain text (not structured/parsed). The prompt lives in `src/ai/summarizer.rs`.
+The summarizer uses nut graph structure, auto-detecting Editorial vs Product format. Same prompt as `~/Projects/briefing/`. Output is plain text displayed directly in the TUI. The prompt lives in `src/ai/summarizer.rs`.
 
-- **Editorial:** What's happening / Why it matters / The big picture + optional quote
-- **Product:** The product / Cost / Availability / Platforms + optional quote
-- Response filter strips preamble lines ("This is an EDITORIAL summary")
+- **Editorial:** LEDE (who/what) / NUTGRAF (why it matters, 2-4 sentences) + optional verbatim quote
+- **Product:** The product / Cost / Availability / Platforms + optional verbatim quote
+- Response filter strips `FORMAT:` lines (used by briefing for parsing, not needed for display)
 - Excerpt cleaner in `app.rs:clean_summary_for_excerpt()` strips label prefixes for Raindrop bookmarks
-- Shared design with `~/Projects/briefing/` but BeatCheck uses human-readable labels (not `SCREAMING_SNAKE` keys) since text is displayed directly in the TUI
 
 ### Claude API Gotcha
 

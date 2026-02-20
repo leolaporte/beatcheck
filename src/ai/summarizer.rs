@@ -67,32 +67,34 @@ impl Summarizer {
         };
 
         let user_message = format!(
-            r#"You are a journalist writing in Axios Smart Brevity style. Summarize the article below using the appropriate format.
+            r#"You are a journalist summarizing articles using the nut graph structure. Summarize the article below using the appropriate format.
 
 First, determine: Is this article primarily about a specific PRODUCT (hardware, software, app, device) or is it EDITORIAL (news, policy, analysis, industry event)?
 
 RULES:
 1. Use ONLY information from the article - no external knowledge
-2. Each section should be 1-2 concise sentences
-3. If the article has insufficient content, respond with just: "Insufficient content for summary"
-4. If there are direct quotes with clear speaker attribution, include the most important one
-5. Output ONLY the summary lines below - no introductions, conclusions, or commentary
-6. Do NOT state the format type (e.g. "This is an EDITORIAL summary") - just start with the first line
+2. If the article has insufficient content, respond with just: "Insufficient content for summary"
+3. QUOTE must be copied VERBATIM from the article — the exact words as they appear, with clear speaker attribution. Do not paraphrase or alter the quote in any way.
 
-If EDITORIAL, respond in this exact format:
-What's happening: One strong sentence capturing the core news or development.
-Why it matters: 1-2 sentences explaining why this is significant.
-The big picture: One sentence on broader industry or societal implications. Omit this line if the article is too narrow for broader context.
-"quote text" -- Speaker Name
+If EDITORIAL, respond with:
+One strong sentence identifying WHO is involved and WHAT happened or was announced.
 
-If PRODUCT, respond in this exact format:
-The product: What the product is and what it does (1-2 sentences).
-Cost: Pricing details. Omit this line if pricing is not mentioned.
-Availability: When and where it is available. Omit this line if not mentioned.
-Platforms: What platforms or operating systems it runs on. Omit this line for hardware-only products or if not mentioned.
-"quote text" -- Speaker Name
+A paragraph (2-4 sentences) explaining WHY this matters. Contextualize the most important facts and give the reader a clear understanding of the central issue or topic.
 
-Omit the quote line if there are no quotes or no clear speaker attribution in the article.
+"exact verbatim quote from the article" -- Speaker Name
+
+If PRODUCT, respond with:
+What the product is and what it does (1-2 sentences).
+
+Pricing details. Omit if not mentioned.
+
+When and where it is available. Omit if not mentioned.
+
+What platforms or operating systems it runs on. Omit for hardware-only products or if not mentioned.
+
+"exact verbatim quote from the article" -- Speaker Name
+
+Do NOT include any labels, prefixes, or headings. Just the plain text. Omit the quote line if there are no direct quotes with clear speaker attribution in the article.
 
 Title: {}
 
@@ -134,19 +136,6 @@ Article:
             .filter_map(|block| block.text)
             .collect::<Vec<_>>()
             .join("\n");
-
-        // Strip preamble lines like "This is an EDITORIAL summary"
-        let summary = summary
-            .lines()
-            .filter(|line| {
-                let lower = line.trim().to_lowercase();
-                !lower.starts_with("this is an editorial")
-                    && !lower.starts_with("this is a product")
-            })
-            .collect::<Vec<_>>()
-            .join("\n")
-            .trim()
-            .to_string();
 
         Ok(summary)
     }

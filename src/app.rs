@@ -854,50 +854,14 @@ impl App {
 
     /// Clean AI summary prefixes and extract first sentence for Raindrop excerpt
     fn clean_summary_for_excerpt(summary: &str) -> String {
-        // Smart Brevity label prefixes to strip (checked case-insensitively)
-        let prefixes = [
-            "what's happening:",
-            "the product:",
-            "why it matters:",
-            "the big picture:",
-            "cost:",
-            "availability:",
-            "platforms:",
-            // Legacy bullet-point format
-            "summary:",
-            "here's the summary of the article:",
-            "here's a summary of the article:",
-            "here is the summary of the article:",
-            "here is a summary of the article:",
-            "here's the summary:",
-            "here's a summary:",
-            "here is the summary:",
-            "here is a summary:",
-        ];
-
-        // Get first non-empty line
+        // Get first non-empty line (the lede sentence)
         let first_line = summary
             .lines()
             .map(|line| line.trim())
             .find(|line| !line.is_empty())
             .unwrap_or("");
 
-        // Strip bullet prefix from legacy format first
-        let mut text = first_line.to_string();
-        if text.starts_with("• ") {
-            text = text["• ".len()..].to_string();
-        }
-
-        // Strip label prefix if present (case-insensitive)
-        let text_lower = text.to_lowercase();
-        for prefix in &prefixes {
-            if text_lower.starts_with(prefix) {
-                text = text[prefix.len()..].trim_start().to_string();
-                break;
-            }
-        }
-
-        Self::get_first_sentence(&text)
+        Self::get_first_sentence(first_line)
     }
 
     pub async fn import_opml(&mut self, path: &Path) -> Result<()> {
