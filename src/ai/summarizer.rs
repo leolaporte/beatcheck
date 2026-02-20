@@ -137,6 +137,22 @@ Article:
             .collect::<Vec<_>>()
             .join("\n");
 
+        // Strip format/type labels the model sometimes adds despite instructions
+        let summary = summary
+            .lines()
+            .filter(|line| {
+                let upper = line.trim().to_uppercase();
+                !upper.starts_with("FORMAT:")
+                    && upper != "EDITORIAL"
+                    && upper != "PRODUCT"
+                    && upper != "**EDITORIAL**"
+                    && upper != "**PRODUCT**"
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+            .trim()
+            .to_string();
+
         Ok(summary)
     }
 
