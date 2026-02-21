@@ -2,3 +2,6 @@
 /dist/
 *.db
 *.sqlite
+!.github/
+!.github/workflows/
+!.github/workflows/*.yml

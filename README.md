@@ -109,14 +109,13 @@ beatcheck --refresh
 | `a` | Add new feed |
 | `i` | Import OPML file |
 | `w` | Export OPML file |
-| `s` | Toggle starred |
-| `m` | Toggle read/unread |
 | `o` | Open in browser |
 | `e` | Email article |
 | `b` | Bookmark to Raindrop.io |
-| `f` | Cycle filter (Unread/Starred/All) |
+| `Space` then `t`/`i`/`m` | Bookmark with quick tag (`twit`/`im`/`mbw`) |
 | `g` | Regenerate summary |
 | `d` | Delete article |
+| `D` | Delete selected feed |
 | `u` | Undelete last deleted |
 | `?` | Show help |
 | `q` | Quit |

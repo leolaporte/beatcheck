@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use crate::error::{AppError, Result};
 
@@ -42,24 +44,29 @@ impl Default for Config {
     }
 }
 
-impl Config {
-    /// Parse config from a TOML string
-    pub fn from_str(content: &str) -> Result<Self> {
+impl FromStr for Config {
+    type Err = AppError;
+
+    fn from_str(content: &str) -> Result<Self> {
         let config: Config = toml::from_str(content)?;
         Ok(config)
     }
+}
 
-    /// Serialize config to a TOML string
-    pub fn to_string(&self) -> Result<String> {
-        toml::to_string_pretty(self).map_err(|e| AppError::Config(e.to_string()).into())
+impl fmt::Display for Config {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let toml = toml::to_string_pretty(self).map_err(|_| fmt::Error)?;
+        f.write_str(&toml)
     }
+}
 
+impl Config {
     pub fn load() -> Result<Self> {
         let config_path = Self::config_path();
 
         let mut config = if config_path.exists() {
             let content = std::fs::read_to_string(&config_path)?;
-            toml::from_str(&content)?
+            content.parse::<Config>()?
         } else {
             let config = Config::default();
             config.save()?;
@@ -82,8 +89,7 @@ impl Config {
         if let Some(parent) = config_path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        let content = toml::to_string_pretty(self)
-            .map_err(|e| AppError::Config(e.to_string()))?;
+        let content = self.to_string();
         std::fs::write(config_path, content)?;
         Ok(())
     }
@@ -131,7 +137,7 @@ refresh_interval_minutes = 60
 default_tags = ["news", "tech"]
 "#;
 
-        let config = Config::from_str(toml).unwrap();
+        let config = toml.parse::<Config>().unwrap();
 
         assert_eq!(config.db_path, "/custom/path/feeds.db");
         assert_eq!(config.claude_api_key, Some("sk-test-key".to_string()));
@@ -145,7 +151,7 @@ default_tags = ["news", "tech"]
         // Empty config should use all defaults
         let toml = "";
 
-        let config = Config::from_str(toml).unwrap();
+        let config = toml.parse::<Config>().unwrap();
 
         // db_path gets default
         assert!(config.db_path.contains("beatcheck"));
@@ -162,7 +168,7 @@ refresh_interval_minutes = 15
 default_tags = ["podcast"]
 "#;
 
-        let config = Config::from_str(toml).unwrap();
+        let config = toml.parse::<Config>().unwrap();
 
         // Specified values
         assert_eq!(config.refresh_interval_minutes, 15);
@@ -181,7 +187,7 @@ claude_api_key = "my-claude-key"
 raindrop_token = "my-raindrop-token"
 "#;
 
-        let config = Config::from_str(toml).unwrap();
+        let config = toml.parse::<Config>().unwrap();
 
         assert_eq!(config.claude_api_key, Some("my-claude-key".to_string()));
         assert_eq!(config.raindrop_token, Some("my-raindrop-token".to_string()));
@@ -193,7 +199,7 @@ raindrop_token = "my-raindrop-token"
     fn test_parse_invalid_toml() {
         let bad_toml = "this is not valid toml [[[";
 
-        let result = Config::from_str(bad_toml);
+        let result = bad_toml.parse::<Config>();
         assert!(result.is_err());
     }
 
@@ -203,7 +209,7 @@ raindrop_token = "my-raindrop-token"
 refresh_interval_minutes = "not a number"
 "#;
 
-        let result = Config::from_str(toml);
+        let result = toml.parse::<Config>();
         assert!(result.is_err());
     }
 
@@ -219,7 +225,7 @@ refresh_interval_minutes = "not a number"
             default_tags: vec!["a".to_string(), "b".to_string()],
         };
 
-        let toml = config.to_string().unwrap();
+        let toml = config.to_string();
 
         assert!(toml.contains("db_path = \"/test/feeds.db\""));
         assert!(toml.contains("claude_api_key = \"test-key\""));
@@ -237,13 +243,16 @@ refresh_interval_minutes = "not a number"
             default_tags: vec!["tag1".to_string(), "tag2".to_string(), "tag3".to_string()],
         };
 
-        let toml = original.to_string().unwrap();
-        let parsed = Config::from_str(&toml).unwrap();
+        let toml = original.to_string();
+        let parsed = toml.parse::<Config>().unwrap();
 
         assert_eq!(parsed.db_path, original.db_path);
         assert_eq!(parsed.claude_api_key, original.claude_api_key);
         assert_eq!(parsed.raindrop_token, original.raindrop_token);
-        assert_eq!(parsed.refresh_interval_minutes, original.refresh_interval_minutes);
+        assert_eq!(
+            parsed.refresh_interval_minutes,
+            original.refresh_interval_minutes
+        );
         assert_eq!(parsed.default_tags, original.default_tags);
     }
 
@@ -255,7 +264,7 @@ refresh_interval_minutes = "not a number"
 default_tags = []
 "#;
 
-        let config = Config::from_str(toml).unwrap();
+        let config = toml.parse::<Config>().unwrap();
         assert!(config.default_tags.is_empty());
     }
 
@@ -265,7 +274,7 @@ default_tags = []
 refresh_interval_minutes = 0
 "#;
 
-        let config = Config::from_str(toml).unwrap();
+        let config = toml.parse::<Config>().unwrap();
         assert_eq!(config.refresh_interval_minutes, 0);
     }
 
@@ -275,7 +284,7 @@ refresh_interval_minutes = 0
 refresh_interval_minutes = 10080
 "#;
 
-        let config = Config::from_str(toml).unwrap();
+        let config = toml.parse::<Config>().unwrap();
         assert_eq!(config.refresh_interval_minutes, 10080); // 1 week in minutes
     }
 
@@ -285,7 +294,7 @@ refresh_interval_minutes = 10080
 claude_api_key = "sk-ant-api03-abc123!@#$%^&*()_+-=[]{}|;':\",./<>?"
 "#;
 
-        let config = Config::from_str(toml).unwrap();
+        let config = toml.parse::<Config>().unwrap();
         assert!(config.claude_api_key.is_some());
         assert!(config.claude_api_key.unwrap().starts_with("sk-ant-api03"));
     }
@@ -296,7 +305,7 @@ claude_api_key = "sk-ant-api03-abc123!@#$%^&*()_+-=[]{}|;':\",./<>?"
 default_tags = ["日本語", "émoji", "🎉"]
 "#;
 
-        let config = Config::from_str(toml).unwrap();
+        let config = toml.parse::<Config>().unwrap();
         assert_eq!(config.default_tags.len(), 3);
         assert_eq!(config.default_tags[0], "日本語");
         assert_eq!(config.default_tags[2], "🎉");

@@ -52,7 +52,7 @@ impl Repository {
                     "SELECT id, title, url, site_url, description, last_fetched, created_at, updated_at FROM feeds ORDER BY title",
                 )?;
                 let feeds = stmt
-                    .query_map([], |row| Ok(feed_from_row(row)))?
+                    .query_map([], feed_from_row)?
                     .collect::<std::result::Result<Vec<_>, _>>()?;
                 Ok(feeds)
             })
@@ -140,7 +140,7 @@ impl Repository {
                        ORDER BY a.published_at DESC NULLS LAST, a.fetched_at DESC"#,
                 )?;
                 let articles = stmt
-                    .query_map([], |row| Ok(article_from_row(row)))?
+                    .query_map([], article_from_row)?
                     .collect::<std::result::Result<Vec<_>, _>>()?;
                 Ok(articles)
             })
@@ -272,7 +272,7 @@ impl Repository {
                     "SELECT id, article_id, content, model_version, generated_at FROM summaries WHERE article_id = ?1",
                 )?;
                 let summary = stmt
-                    .query_row(params![article_id], |row| Ok(summary_from_row(row)))
+                    .query_row(params![article_id], summary_from_row)
                     .optional()?;
                 Ok(summary)
             })
@@ -280,7 +280,12 @@ impl Repository {
         Ok(summary)
     }
 
-    pub async fn save_summary(&self, article_id: i64, content: String, model: String) -> Result<()> {
+    pub async fn save_summary(
+        &self,
+        article_id: i64,
+        content: String,
+        model: String,
+    ) -> Result<()> {
         self.conn
             .call(move |conn| {
                 conn.execute(
@@ -347,16 +352,15 @@ fn parse_datetime(s: &str) -> Option<DateTime<Utc>> {
     None
 }
 
-fn feed_from_row(row: &Row) -> Feed {
-    Feed {
-        id: row.get(0).unwrap(),
-        title: row.get(1).unwrap(),
-        url: row.get(2).unwrap(),
-        site_url: row.get(3).unwrap(),
-        description: row.get(4).unwrap(),
+fn feed_from_row(row: &Row) -> rusqlite::Result<Feed> {
+    Ok(Feed {
+        id: row.get(0)?,
+        title: row.get(1)?,
+        url: row.get(2)?,
+        site_url: row.get(3)?,
+        description: row.get(4)?,
         last_fetched: row
-            .get::<_, Option<String>>(5)
-            .unwrap()
+            .get::<_, Option<String>>(5)?
             .and_then(|s| parse_datetime(&s)),
         created_at: row
             .get::<_, String>(6)
@@ -368,42 +372,193 @@ fn feed_from_row(row: &Row) -> Feed {
             .ok()
             .and_then(|s| parse_datetime(&s))
             .unwrap_or_else(Utc::now),
-    }
+    })
 }
 
-fn article_from_row(row: &Row) -> Article {
-    Article {
-        id: row.get(0).unwrap(),
-        feed_id: row.get(1).unwrap(),
-        guid: row.get(2).unwrap(),
-        title: row.get(3).unwrap(),
-        url: row.get(4).unwrap(),
-        author: row.get(5).unwrap(),
-        content: row.get(6).unwrap(),
-        content_text: row.get(7).unwrap(),
+fn article_from_row(row: &Row) -> rusqlite::Result<Article> {
+    Ok(Article {
+        id: row.get(0)?,
+        feed_id: row.get(1)?,
+        guid: row.get(2)?,
+        title: row.get(3)?,
+        url: row.get(4)?,
+        author: row.get(5)?,
+        content: row.get(6)?,
+        content_text: row.get(7)?,
         published_at: row
-            .get::<_, Option<String>>(8)
-            .unwrap()
+            .get::<_, Option<String>>(8)?
             .and_then(|s| parse_datetime(&s)),
         fetched_at: row
             .get::<_, String>(9)
             .ok()
             .and_then(|s| parse_datetime(&s))
             .unwrap_or_else(Utc::now),
-        feed_title: row.get(10).unwrap(),
-    }
+        feed_title: row.get(10)?,
+    })
 }
 
-fn summary_from_row(row: &Row) -> Summary {
-    Summary {
-        id: row.get(0).unwrap(),
-        article_id: row.get(1).unwrap(),
-        content: row.get(2).unwrap(),
-        model_version: row.get(3).unwrap(),
+fn summary_from_row(row: &Row) -> rusqlite::Result<Summary> {
+    Ok(Summary {
+        id: row.get(0)?,
+        article_id: row.get(1)?,
+        content: row.get(2)?,
+        model_version: row.get(3)?,
         generated_at: row
             .get::<_, String>(4)
             .ok()
             .and_then(|s| parse_datetime(&s))
             .unwrap_or_else(Utc::now),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Duration;
+    use tempfile::TempDir;
+
+    struct TestRepo {
+        repo: Repository,
+        _tmpdir: TempDir,
+    }
+
+    async fn test_repo() -> TestRepo {
+        let tmpdir = tempfile::tempdir().unwrap();
+        let db_path = tmpdir.path().join("test.db");
+        let repo = Repository::new(db_path.to_string_lossy().as_ref())
+            .await
+            .unwrap();
+        TestRepo {
+            repo,
+            _tmpdir: tmpdir,
+        }
+    }
+
+    #[tokio::test]
+    async fn insert_and_read_article_with_summary() {
+        let test = test_repo().await;
+        let repo = &test.repo;
+        let feed_id = repo
+            .insert_feed(NewFeed {
+                title: "Feed".into(),
+                url: "https://example.com/rss".into(),
+                site_url: Some("https://example.com".into()),
+                description: Some("Example feed".into()),
+            })
+            .await
+            .unwrap();
+
+        repo.upsert_article(NewArticle {
+            feed_id,
+            guid: "guid-1".into(),
+            title: "Hello".into(),
+            url: "https://example.com/post".into(),
+            author: Some("leo".into()),
+            content: Some("<p>Hello</p>".into()),
+            content_text: Some("Hello".into()),
+            published_at: Some(Utc::now()),
+        })
+        .await
+        .unwrap();
+
+        let articles = repo.get_all_articles_sorted().await.unwrap();
+        assert_eq!(articles.len(), 1);
+        assert_eq!(articles[0].title, "Hello");
+        assert_eq!(articles[0].feed_title.as_deref(), Some("Feed"));
+
+        repo.save_summary(articles[0].id, "summary".into(), "claude-test".into())
+            .await
+            .unwrap();
+        let summary = repo.get_summary(articles[0].id).await.unwrap().unwrap();
+        assert_eq!(summary.content, "summary");
+    }
+
+    #[tokio::test]
+    async fn deleted_article_is_not_reinserted() {
+        let test = test_repo().await;
+        let repo = &test.repo;
+        let feed_id = repo
+            .insert_feed(NewFeed {
+                title: "Feed".into(),
+                url: "https://example.com/rss".into(),
+                site_url: None,
+                description: None,
+            })
+            .await
+            .unwrap();
+
+        let inserted = repo
+            .upsert_article(NewArticle {
+                feed_id,
+                guid: "guid-1".into(),
+                title: "First".into(),
+                url: "https://example.com/1".into(),
+                author: None,
+                content: None,
+                content_text: None,
+                published_at: None,
+            })
+            .await
+            .unwrap();
+        repo.delete_article(inserted).await.unwrap();
+
+        let skipped = repo
+            .upsert_article(NewArticle {
+                feed_id,
+                guid: "guid-1".into(),
+                title: "Re-added".into(),
+                url: "https://example.com/1".into(),
+                author: None,
+                content: None,
+                content_text: None,
+                published_at: None,
+            })
+            .await
+            .unwrap();
+        assert_eq!(skipped, 0);
+        assert!(repo.get_all_articles_sorted().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn invalid_datetime_in_row_falls_back_to_now() {
+        let test = test_repo().await;
+        let repo = &test.repo;
+        let feed_id = repo
+            .insert_feed(NewFeed {
+                title: "Feed".into(),
+                url: "https://example.com/rss".into(),
+                site_url: None,
+                description: None,
+            })
+            .await
+            .unwrap();
+
+        let article_id = repo
+            .upsert_article(NewArticle {
+                feed_id,
+                guid: "guid-2".into(),
+                title: "Date test".into(),
+                url: "https://example.com/date".into(),
+                author: None,
+                content: None,
+                content_text: None,
+                published_at: None,
+            })
+            .await
+            .unwrap();
+
+        repo.conn
+            .call(move |conn| {
+                conn.execute(
+                    "UPDATE articles SET fetched_at = 'not-a-datetime' WHERE id = ?1",
+                    params![article_id],
+                )?;
+                Ok(())
+            })
+            .await
+            .unwrap();
+
+        let article = repo.get_all_articles_sorted().await.unwrap().remove(0);
+        assert!(article.fetched_at > Utc::now() - Duration::minutes(1));
     }
 }

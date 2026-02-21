@@ -34,26 +34,38 @@ async fn main() -> Result<()> {
     use std::io::Write;
     use tracing_subscriber::fmt::MakeWriter;
 
-    let log_file = std::sync::Arc::new(std::sync::Mutex::new(
-        OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("/tmp/beatcheck-errors.log")
-            .expect("Failed to open log file"),
-    ));
+    let log_file = match OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("/tmp/beatcheck-errors.log")
+    {
+        Ok(file) => Some(std::sync::Arc::new(std::sync::Mutex::new(file))),
+        Err(err) => {
+            eprintln!("Warning: unable to open /tmp/beatcheck-errors.log: {err}");
+            None
+        }
+    };
 
     struct DualWriter {
-        file: std::sync::Arc<std::sync::Mutex<std::fs::File>>,
+        file: Option<std::sync::Arc<std::sync::Mutex<std::fs::File>>>,
     }
 
     impl Write for DualWriter {
         fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-            let _ = self.file.lock().unwrap().write_all(buf);
+            if let Some(file) = &self.file {
+                if let Ok(mut file) = file.lock() {
+                    let _ = file.write_all(buf);
+                }
+            }
             std::io::stderr().write(buf)
         }
 
         fn flush(&mut self) -> io::Result<()> {
-            let _ = self.file.lock().unwrap().flush();
+            if let Some(file) = &self.file {
+                if let Ok(mut file) = file.lock() {
+                    let _ = file.flush();
+                }
+            }
             std::io::stderr().flush()
         }
     }
@@ -70,12 +82,14 @@ async fn main() -> Result<()> {
 
     let dual_writer = DualWriter { file: log_file };
 
+    let mut env_filter = tracing_subscriber::EnvFilter::from_default_env()
+        .add_directive(tracing::Level::WARN.into());
+    if let Ok(directive) = "html5ever=error".parse() {
+        env_filter = env_filter.add_directive(directive);
+    }
+
     tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive(tracing::Level::WARN.into())
-                .add_directive("html5ever=error".parse().unwrap()),
-        )
+        .with_env_filter(env_filter)
         .with_writer(dual_writer)
         .init();
 
@@ -160,9 +174,15 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
         // Poll for events with timeout to allow async operations
         if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
-                if let Some(action) =
-                    handle_key_event(key, app.tag_input_active, app.feed_input_active, app.opml_input_active, app.opml_export_active, app.show_help, app.bookmark_prefix_active)
-                {
+                if let Some(action) = handle_key_event(
+                    key,
+                    app.tag_input_active,
+                    app.feed_input_active,
+                    app.opml_input_active,
+                    app.opml_export_active,
+                    app.show_help,
+                    app.bookmark_prefix_active,
+                ) {
                     let should_quit = app.handle_action(action).await?;
                     if should_quit {
                         return Ok(());
