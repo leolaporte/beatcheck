@@ -49,9 +49,7 @@ impl Blocklist {
     pub fn reload(&mut self) {
         // Get file metadata to check modification time
         let path = Self::blocklist_path();
-        let current_mtime = fs::metadata(&path)
-            .ok()
-            .and_then(|m| m.modified().ok());
+        let current_mtime = fs::metadata(&path).ok().and_then(|m| m.modified().ok());
 
         // Only reload if file changed (or first load)
         if current_mtime != self.last_modified {
@@ -150,10 +148,7 @@ impl Blocklist {
         let lowercased = trimmed.to_lowercase();
 
         // Collapse multiple spaces to single space
-        let normalized = lowercased
-            .split_whitespace()
-            .collect::<Vec<_>>()
-            .join(" ");
+        let normalized = lowercased.split_whitespace().collect::<Vec<_>>().join(" ");
 
         // Re-validate after normalization
         if normalized.is_empty() {
@@ -262,16 +257,11 @@ mod tests {
         blocklist.keywords.insert("crypto".to_string());
 
         // Should match in content even if not in title
-        assert!(blocklist.contains_blocked_keyword(
-            "Tech news",
-            Some("This article discusses crypto markets")
-        ));
+        assert!(blocklist
+            .contains_blocked_keyword("Tech news", Some("This article discusses crypto markets")));
 
         // Should match in title (short-circuit, doesn't check content)
-        assert!(blocklist.contains_blocked_keyword(
-            "Crypto news",
-            Some("Some other content")
-        ));
+        assert!(blocklist.contains_blocked_keyword("Crypto news", Some("Some other content")));
     }
 
     #[test]
@@ -287,10 +277,8 @@ mod tests {
         assert!(!blocklist.contains_blocked_keyword("cryptocurrencies are rising", None));
 
         // Should NOT match in content either
-        assert!(!blocklist.contains_blocked_keyword(
-            "Tech news",
-            Some("The cryptocurrency market is volatile")
-        ));
+        assert!(!blocklist
+            .contains_blocked_keyword("Tech news", Some("The cryptocurrency market is volatile")));
     }
 
     #[test]

@@ -417,10 +417,7 @@ impl App {
         // Check if current article is saved to raindrop
         let article_id = self.selected_article().map(|a| a.id);
         if let Some(id) = article_id {
-            self.is_saved_to_raindrop = self
-                .repository
-                .is_saved_to_raindrop(id)
-                .await?;
+            self.is_saved_to_raindrop = self.repository.is_saved_to_raindrop(id).await?;
 
             // Check for cached summary
             if let Some(summary) = self.repository.get_summary(id).await? {
@@ -535,10 +532,17 @@ impl App {
                             // Save to database only if article still exists
                             if let Err(e) = self
                                 .repository
-                                .save_summary(result.article_id, summary_text.clone(), model.clone())
+                                .save_summary(
+                                    result.article_id,
+                                    summary_text.clone(),
+                                    model.clone(),
+                                )
                                 .await
                             {
-                                tracing::warn!("Failed to save summary (article may have been deleted): {}", e);
+                                tracing::warn!(
+                                    "Failed to save summary (article may have been deleted): {}",
+                                    e
+                                );
                             }
 
                             self.current_summary = Some(Summary {
@@ -550,7 +554,10 @@ impl App {
                             });
                             self.summary_status = SummaryStatus::Generated;
                         } else {
-                            tracing::debug!("Discarding summary for deleted article {}", result.article_id);
+                            tracing::debug!(
+                                "Discarding summary for deleted article {}",
+                                result.article_id
+                            );
                             self.summary_status = SummaryStatus::NotGenerated;
                         }
                     }
@@ -601,7 +608,8 @@ impl App {
                 Ok(new_feed) => {
                     // Check if feed already exists
                     if self.feeds.iter().any(|f| f.url == new_feed.url) {
-                        self.feed_input_status = Some(format!("Feed already exists: {}", new_feed.title));
+                        self.feed_input_status =
+                            Some(format!("Feed already exists: {}", new_feed.title));
                         return Ok(());
                     }
 
@@ -659,9 +667,14 @@ impl App {
             for (feed_id, articles) in result.results {
                 for article in articles {
                     // Filter: skip articles containing blocked keywords
-                    let content_ref = article.content_text.as_deref()
+                    let content_ref = article
+                        .content_text
+                        .as_deref()
                         .or(article.content.as_deref());
-                    if self.blocklist.contains_blocked_keyword(&article.title, content_ref) {
+                    if self
+                        .blocklist
+                        .contains_blocked_keyword(&article.title, content_ref)
+                    {
                         continue; // Silent skip - FILTER-06
                     }
 
@@ -742,7 +755,13 @@ impl App {
         let note = self.current_summary.as_ref().map(|s| s.content.clone());
 
         match raindrop
-            .save_bookmark(&url, Some(&title), excerpt.as_deref(), note.as_deref(), tags.clone())
+            .save_bookmark(
+                &url,
+                Some(&title),
+                excerpt.as_deref(),
+                note.as_deref(),
+                tags.clone(),
+            )
             .await
         {
             Ok(raindrop_id) => {
@@ -756,7 +775,8 @@ impl App {
                     .await?;
                 self.is_saved_to_raindrop = true;
                 self.saved_count += 1;
-                self.bookmark_status = Some((format!("Bookmarked{}", tags_display), Instant::now()));
+                self.bookmark_status =
+                    Some((format!("Bookmarked{}", tags_display), Instant::now()));
                 tracing::info!("Saved to Raindrop: {}", url);
             }
             Err(e) => {
@@ -804,7 +824,13 @@ impl App {
         let note = self.current_summary.as_ref().map(|s| s.content.clone());
 
         match raindrop
-            .save_bookmark(&url, Some(&title), excerpt.as_deref(), note.as_deref(), tags.clone())
+            .save_bookmark(
+                &url,
+                Some(&title),
+                excerpt.as_deref(),
+                note.as_deref(),
+                tags.clone(),
+            )
             .await
         {
             Ok(raindrop_id) => {

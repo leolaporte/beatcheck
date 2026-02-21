@@ -46,9 +46,8 @@ impl FeedFetcher {
                     .and_then(|c| c.body.as_ref())
                     .or_else(|| entry.summary.as_ref().map(|s| &s.content));
 
-                let content_text = content_html.and_then(|html| {
-                    html2text::from_read(html.as_bytes(), 80).ok()
-                });
+                let content_text =
+                    content_html.and_then(|html| html2text::from_read(html.as_bytes(), 80).ok());
 
                 NewArticle {
                     feed_id,
@@ -134,7 +133,8 @@ impl FeedFetcher {
         }
 
         // If content looks like HTML, search for feed links
-        if content_type.contains("html") || bytes.starts_with(b"<!") || bytes.starts_with(b"<html") {
+        if content_type.contains("html") || bytes.starts_with(b"<!") || bytes.starts_with(b"<html")
+        {
             let html = String::from_utf8_lossy(&bytes);
             if let Some(feed_url) = self.find_feed_link(&html, &final_url) {
                 // Fetch the discovered feed URL
@@ -174,8 +174,9 @@ impl FeedFetcher {
 
         // Also try reverse order (type before rel)
         let link_re2 = Regex::new(
-            r#"<link[^>]*type=["']application/(rss|atom)\+xml["'][^>]*href=["']([^"']+)["']"#
-        ).ok()?;
+            r#"<link[^>]*type=["']application/(rss|atom)\+xml["'][^>]*href=["']([^"']+)["']"#,
+        )
+        .ok()?;
 
         let href = link_re
             .captures(html)
@@ -330,7 +331,10 @@ mod tests {
             <link rel="alternate" type="application/rss+xml" href="https://feeds.example.com/main.xml">
         "#;
         let result = f.find_feed_link(html, "https://example.com");
-        assert_eq!(result, Some("https://feeds.example.com/main.xml".to_string()));
+        assert_eq!(
+            result,
+            Some("https://feeds.example.com/main.xml".to_string())
+        );
     }
 
     #[test]

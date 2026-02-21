@@ -1,12 +1,13 @@
-use std::time::Duration;
 use reqwest::header::{HeaderMap, HeaderValue, COOKIE, USER_AGENT};
 use reqwest::Client;
 use rusqlite::params;
+use std::time::Duration;
 use url::Url;
 
 use crate::error::Result;
 
-const USER_AGENT_STRING: &str = "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0";
+const USER_AGENT_STRING: &str =
+    "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0";
 
 pub struct ContentFetcher {
     client: Client,
@@ -47,12 +48,7 @@ impl ContentFetcher {
         }
 
         // Fetch the page
-        let response = self
-            .client
-            .get(article_url)
-            .headers(headers)
-            .send()
-            .await?;
+        let response = self.client.get(article_url).headers(headers).send().await?;
 
         if !response.status().is_success() {
             tracing::debug!("Failed to fetch {}: {}", article_url, response.status());
@@ -87,10 +83,7 @@ impl ContentFetcher {
             dirs::home_dir().map(|h| h.join(".config/chromium/Default/Cookies")),
         ];
 
-        let cookies_db = chrome_paths
-            .into_iter()
-            .flatten()
-            .find(|p| p.exists());
+        let cookies_db = chrome_paths.into_iter().flatten().find(|p| p.exists());
 
         let cookies_db = match cookies_db {
             Some(db) => db,
@@ -261,7 +254,6 @@ impl ContentFetcher {
 
         None
     }
-
 
     /// Extract readable content from HTML using html2text
     fn extract_content(&self, html: &str, _url: &str) -> Option<String> {

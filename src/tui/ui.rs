@@ -42,7 +42,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
     let right_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),   // Article title (single line)
+            Constraint::Length(3),      // Article title (single line)
             Constraint::Percentage(30), // Feed content (30%)
             Constraint::Percentage(70), // AI summary (70%)
         ])
@@ -168,17 +168,29 @@ fn render_article_list(frame: &mut Frame, app: &App, area: Rect) {
 fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
     // Left side: main status
     let left_status = if app.is_refreshing {
-        (format!("{} Refreshing...", app.spinner_char()), Color::DarkGray)
+        (
+            format!("{} Refreshing...", app.spinner_char()),
+            Color::DarkGray,
+        )
     } else if matches!(app.summary_status, SummaryStatus::Generating) {
-        (format!("{} Summarizing...", app.spinner_char()), Color::DarkGray)
+        (
+            format!("{} Summarizing...", app.spinner_char()),
+            Color::DarkGray,
+        )
     } else if app.bookmark_prefix_active {
         ("Space: t=twit  i=im  m=mbw".to_string(), Color::Yellow)
     } else {
-        ("j/k:move  Enter:summarize  o:open  d:delete  a:add  ?:help  q:quit".to_string(), Color::DarkGray)
+        (
+            "j/k:move  Enter:summarize  o:open  d:delete  a:add  ?:help  q:quit".to_string(),
+            Color::DarkGray,
+        )
     };
 
     // Right side: bookmark status (if any)
-    let right_status = app.bookmark_status.as_ref().map(|(msg, _)| format!("✓ {} ", msg));
+    let right_status = app
+        .bookmark_status
+        .as_ref()
+        .map(|(msg, _)| format!("✓ {} ", msg));
 
     // Calculate padding for right-aligned text
     let right_text = right_status.unwrap_or_default();
@@ -295,7 +307,11 @@ fn render_feed_input(frame: &mut Frame, app: &App) {
     // Split inner area for input and status
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(1), Constraint::Length(1), Constraint::Min(0)])
+        .constraints([
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Min(0),
+        ])
         .split(inner);
 
     let input_text = format!("> {}_", app.feed_input);
@@ -337,7 +353,11 @@ fn render_opml_input(frame: &mut Frame, app: &App) {
     // Split inner area for input and status
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(1), Constraint::Length(1), Constraint::Min(0)])
+        .constraints([
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Min(0),
+        ])
         .split(inner);
 
     let input_text = format!("> {}_", app.opml_input);
@@ -351,7 +371,10 @@ fn render_opml_input(frame: &mut Frame, app: &App) {
         } else if status.starts_with("Error:") || status.starts_with("Not found:") {
             (status.clone(), Color::Red)
         } else if status == "Importing..." {
-            (format!("{} Importing...", app.spinner_char()), Color::Yellow)
+            (
+                format!("{} Importing...", app.spinner_char()),
+                Color::Yellow,
+            )
         } else {
             (status.clone(), Color::DarkGray)
         };
@@ -377,7 +400,11 @@ fn render_opml_export(frame: &mut Frame, app: &App) {
     // Split inner area for input and status
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(1), Constraint::Length(1), Constraint::Min(0)])
+        .constraints([
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Min(0),
+        ])
         .split(inner);
 
     let input_text = format!("> {}_", app.opml_export_input);

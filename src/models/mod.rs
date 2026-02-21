@@ -1,7 +1,7 @@
-mod feed;
 mod article;
+mod feed;
 mod summary;
 
-pub use feed::{Feed, NewFeed};
 pub use article::{Article, NewArticle};
+pub use feed::{Feed, NewFeed};
 pub use summary::{Summary, SummaryStatus};

@@ -1,5 +1,5 @@
-mod ui;
 mod handler;
+mod ui;
 
-pub use ui::draw;
 pub use handler::{handle_key_event, AppAction};
+pub use ui::draw;

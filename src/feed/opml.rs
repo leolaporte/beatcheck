@@ -57,7 +57,9 @@ pub fn export_opml_file(path: &Path, feeds: &[Feed]) -> Result<()> {
         opml.body.outlines.push(outline);
     }
 
-    let content = opml.to_string().map_err(|e| AppError::OpmlParse(e.to_string()))?;
+    let content = opml
+        .to_string()
+        .map_err(|e| AppError::OpmlParse(e.to_string()))?;
     std::fs::write(path, content)?;
 
     Ok(())
@@ -98,8 +100,14 @@ mod tests {
 
         assert_eq!(feeds.len(), 2);
         assert_eq!(feeds[0].title, "Ars Technica");
-        assert_eq!(feeds[0].url, "https://feeds.arstechnica.com/arstechnica/index");
-        assert_eq!(feeds[0].site_url, Some("https://arstechnica.com".to_string()));
+        assert_eq!(
+            feeds[0].url,
+            "https://feeds.arstechnica.com/arstechnica/index"
+        );
+        assert_eq!(
+            feeds[0].site_url,
+            Some("https://arstechnica.com".to_string())
+        );
         assert_eq!(feeds[1].title, "Hacker News");
     }
 
@@ -189,7 +197,10 @@ mod tests {
         let feeds = parse_opml_string(opml_content).unwrap();
 
         assert_eq!(feeds.len(), 1);
-        assert_eq!(feeds[0].description, Some("A great blog about stuff".to_string()));
+        assert_eq!(
+            feeds[0].description,
+            Some("A great blog about stuff".to_string())
+        );
     }
 
     #[test]
@@ -259,7 +270,11 @@ mod tests {
     #[test]
     fn test_roundtrip_export_import() {
         let original_feeds = vec![
-            make_feed(1, "Ars Technica", "https://feeds.arstechnica.com/arstechnica/index"),
+            make_feed(
+                1,
+                "Ars Technica",
+                "https://feeds.arstechnica.com/arstechnica/index",
+            ),
             make_feed(2, "Hacker News", "https://news.ycombinator.com/rss"),
         ];
 
