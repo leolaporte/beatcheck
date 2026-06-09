@@ -81,12 +81,20 @@ impl Config {
     }
 
     pub fn save(&self) -> Result<()> {
-        let config_path = Self::config_path();
-        if let Some(parent) = config_path.parent() {
+        self.save_to(&Self::config_path())
+    }
+
+    /// Write the config to `path`, restricting it to owner-only (0600) permissions.
+    /// The file may contain `raindrop_token`, so it must never be group/world-readable.
+    pub fn save_to(&self, path: &std::path::Path) -> Result<()> {
+        use std::os::unix::fs::PermissionsExt;
+
+        if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
         let content = self.to_string();
-        std::fs::write(config_path, content)?;
+        std::fs::write(path, content)?;
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))?;
         Ok(())
     }
 
@@ -290,5 +298,28 @@ default_tags = ["日本語", "émoji", "🎉"]
         let path = Config::config_path();
         assert!(path.to_string_lossy().contains("beatcheck"));
         assert!(path.to_string_lossy().ends_with("config.toml"));
+    }
+
+    #[test]
+    fn test_save_to_writes_owner_only_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = std::env::temp_dir().join(format!("beatcheck-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("config.toml");
+
+        let config = Config {
+            db_path: "/tmp/feeds.db".to_string(),
+            raindrop_token: Some("secret-token".to_string()),
+            refresh_interval_minutes: 30,
+            default_tags: vec![],
+        };
+        config.save_to(&path).unwrap();
+
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode();
+        // The file holds a secret token; it must not be group- or world-readable.
+        assert_eq!(mode & 0o077, 0, "config file is accessible to group/other: {mode:o}");
+
+        std::fs::remove_dir_all(&dir).ok();
     }
 }

@@ -4,6 +4,7 @@ use feed_rs::parser;
 use futures::stream::{self, StreamExt};
 use regex::Regex;
 use reqwest::Client;
+use url::Url;
 
 use crate::error::Result;
 use crate::models::{Feed, NewArticle, NewFeed};
@@ -19,6 +20,15 @@ impl FeedFetcher {
             .timeout(Duration::from_secs(30))
             .connect_timeout(Duration::from_secs(10))
             .user_agent("beatcheck/1.2.0")
+            .redirect(reqwest::redirect::Policy::custom(|attempt| {
+                if !crate::net::redirect_target_allowed(attempt.url()) {
+                    attempt.stop()
+                } else if attempt.previous().len() >= 10 {
+                    attempt.error("too many redirects")
+                } else {
+                    attempt.follow()
+                }
+            }))
             .build()
             .expect("Failed to create HTTP client");
 
@@ -26,13 +36,20 @@ impl FeedFetcher {
     }
 
     pub async fn fetch_feed(&self, feed_id: i64, url: &str) -> Result<Vec<NewArticle>> {
+        if let Ok(parsed) = Url::parse(url) {
+            crate::net::validate_public_url(&parsed)
+                .map_err(|e| anyhow::anyhow!("Refusing to fetch feed {}: {}", url, e))?;
+        }
+
         let response = self.client.get(url).send().await?;
 
         if !response.status().is_success() {
             return Err(anyhow::anyhow!("Failed to fetch feed: HTTP {}", response.status()).into());
         }
 
-        let bytes = response.bytes().await?;
+        let bytes = crate::net::read_body_capped(response, crate::net::MAX_BODY_BYTES)
+            .await
+            .map_err(|e| anyhow::anyhow!("Feed body too large for {}: {}", url, e))?;
         let feed = parser::parse(&bytes[..])?;
 
         let articles: Vec<NewArticle> = feed
@@ -99,6 +116,11 @@ impl FeedFetcher {
     /// If the URL is a direct RSS/Atom feed, parse it directly
     /// If it's an HTML page, look for feed links in <link> tags
     pub async fn discover_feed(&self, url: &str) -> Result<NewFeed> {
+        if let Ok(parsed) = Url::parse(url) {
+            crate::net::validate_public_url(&parsed)
+                .map_err(|e| anyhow::anyhow!("Refusing to fetch URL {}: {}", url, e))?;
+        }
+
         let response = self.client.get(url).send().await?;
 
         if !response.status().is_success() {
@@ -113,7 +135,9 @@ impl FeedFetcher {
             .unwrap_or("")
             .to_string();
 
-        let bytes = response.bytes().await?;
+        let bytes = crate::net::read_body_capped(response, crate::net::MAX_BODY_BYTES)
+            .await
+            .map_err(|e| anyhow::anyhow!("Response too large for {}: {}", url, e))?;
 
         // Try parsing as RSS/Atom feed first
         if let Ok(feed) = parser::parse(&bytes[..]) {
@@ -137,10 +161,19 @@ impl FeedFetcher {
         {
             let html = String::from_utf8_lossy(&bytes);
             if let Some(feed_url) = self.find_feed_link(&html, &final_url) {
+                // The discovered URL comes from page HTML — validate before fetching.
+                if let Ok(parsed) = Url::parse(&feed_url) {
+                    if crate::net::validate_public_url(&parsed).is_err() {
+                        return Err(anyhow::anyhow!("Refusing to fetch discovered feed URL").into());
+                    }
+                }
                 // Fetch the discovered feed URL
                 let feed_response = self.client.get(&feed_url).send().await?;
                 if feed_response.status().is_success() {
-                    let feed_bytes = feed_response.bytes().await?;
+                    let feed_bytes =
+                        crate::net::read_body_capped(feed_response, crate::net::MAX_BODY_BYTES)
+                            .await
+                            .map_err(|e| anyhow::anyhow!("Discovered feed too large: {}", e))?;
                     if let Ok(feed) = parser::parse(&feed_bytes[..]) {
                         let title = feed
                             .title

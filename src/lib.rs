@@ -6,5 +6,6 @@ pub mod db;
 pub mod error;
 pub mod feed;
 pub mod models;
+pub mod net;
 pub mod services;
 pub mod tui;

@@ -17,6 +17,7 @@ mod db;
 mod error;
 mod feed;
 mod models;
+mod net;
 mod services;
 mod tui;
 

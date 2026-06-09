@@ -17,6 +17,15 @@ impl ContentFetcher {
     pub fn new() -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(30))
+            .redirect(reqwest::redirect::Policy::custom(|attempt| {
+                if !crate::net::redirect_target_allowed(attempt.url()) {
+                    attempt.stop()
+                } else if attempt.previous().len() >= 10 {
+                    attempt.error("too many redirects")
+                } else {
+                    attempt.follow()
+                }
+            }))
             .build()
             .expect("Failed to create HTTP client");
         Self { client }
@@ -33,6 +42,12 @@ impl ContentFetcher {
             Some(d) => d,
             None => return Ok(None),
         };
+
+        // Refuse to fetch private/loopback/link-local targets supplied by a feed.
+        if let Err(e) = crate::net::validate_public_url(&url) {
+            tracing::debug!("Refusing to fetch {}: {}", article_url, e);
+            return Ok(None);
+        }
 
         // Get cookies for this domain from Chrome
         let cookies = self.get_chrome_cookies(domain)?;
@@ -55,7 +70,14 @@ impl ContentFetcher {
             return Ok(None);
         }
 
-        let html = response.text().await?;
+        let body = match crate::net::read_body_capped(response, crate::net::MAX_BODY_BYTES).await {
+            Ok(b) => b,
+            Err(e) => {
+                tracing::debug!("Aborted reading {}: {}", article_url, e);
+                return Ok(None);
+            }
+        };
+        let html = String::from_utf8_lossy(&body);
 
         // Extract readable content
         let content = self.extract_content(&html, article_url);
@@ -76,6 +98,24 @@ impl ContentFetcher {
         self.get_firefox_cookies_internal(domain)
     }
 
+    /// Open a SQLite cookie database read-only and immutable.
+    ///
+    /// `immutable=1` lets SQLite read a database locked by a running browser
+    /// (WAL mode) without taking a lock — and without copying the entire cookie
+    /// jar to a predictable, shared /tmp path that could leak or persist on a crash.
+    fn open_cookie_db(db_path: &std::path::Path) -> rusqlite::Result<rusqlite::Connection> {
+        use rusqlite::OpenFlags;
+
+        let uri = Url::from_file_path(db_path)
+            .map(|u| format!("{u}?immutable=1"))
+            .map_err(|_| rusqlite::Error::InvalidPath(db_path.to_path_buf()))?;
+
+        rusqlite::Connection::open_with_flags(
+            &uri,
+            OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI,
+        )
+    }
+
     fn get_chrome_cookies_internal(&self, domain: &str) -> Result<String> {
         // Try Chrome, then Chromium
         let chrome_paths = vec![
@@ -93,14 +133,7 @@ impl ContentFetcher {
             }
         };
 
-        // Chrome locks the database, so we need to copy it first
-        let temp_db = std::env::temp_dir().join("beatcheck-chrome-cookies.sqlite");
-        if let Err(e) = std::fs::copy(&cookies_db, &temp_db) {
-            tracing::debug!("Failed to copy Chrome cookies database: {}", e);
-            return Ok(String::new());
-        }
-
-        let conn = match rusqlite::Connection::open(&temp_db) {
+        let conn = match Self::open_cookie_db(&cookies_db) {
             Ok(c) => c,
             Err(e) => {
                 tracing::debug!("Failed to open Chrome cookies database: {}", e);
@@ -131,9 +164,6 @@ impl ContentFetcher {
             .filter_map(|r| r.ok())
             .collect();
 
-        // Clean up temp file
-        let _ = std::fs::remove_file(&temp_db);
-
         Ok(cookies.join("; "))
     }
 
@@ -146,14 +176,7 @@ impl ContentFetcher {
             }
         };
 
-        // Firefox locks the database, so we need to copy it first
-        let temp_db = std::env::temp_dir().join("beatcheck-firefox-cookies.sqlite");
-        if let Err(e) = std::fs::copy(&firefox_path, &temp_db) {
-            tracing::debug!("Failed to copy Firefox cookies database: {}", e);
-            return Ok(String::new());
-        }
-
-        let conn = match rusqlite::Connection::open(&temp_db) {
+        let conn = match Self::open_cookie_db(&firefox_path) {
             Ok(c) => c,
             Err(e) => {
                 tracing::debug!("Failed to open Firefox cookies database: {}", e);
@@ -182,9 +205,6 @@ impl ContentFetcher {
             })?
             .filter_map(|r| r.ok())
             .collect();
-
-        // Clean up temp file
-        let _ = std::fs::remove_file(&temp_db);
 
         Ok(cookies.join("; "))
     }
@@ -287,5 +307,42 @@ impl ContentFetcher {
 impl Default for ContentFetcher {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusqlite::Connection;
+
+    #[test]
+    fn test_open_cookie_db_is_read_only_and_does_not_copy() {
+        let dir = std::env::temp_dir().join(format!("beatcheck-cookie-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let db_path = dir.join("cookies.sqlite");
+
+        // Build a source cookie database.
+        {
+            let conn = Connection::open(&db_path).unwrap();
+            conn.execute_batch(
+                "CREATE TABLE moz_cookies (host TEXT, value TEXT);
+                 INSERT INTO moz_cookies VALUES ('example.com', 'secret');",
+            )
+            .unwrap();
+        }
+
+        let conn = ContentFetcher::open_cookie_db(&db_path).unwrap();
+
+        // Reads the real database in place (no copy to a predictable /tmp path).
+        let host: String = conn
+            .query_row("SELECT host FROM moz_cookies", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(host, "example.com");
+
+        // Opened read-only/immutable: we can never mutate the user's cookie jar.
+        let write = conn.execute("INSERT INTO moz_cookies VALUES ('x', 'y')", []);
+        assert!(write.is_err(), "cookie database must be opened read-only");
+
+        std::fs::remove_dir_all(&dir).ok();
     }
 }
