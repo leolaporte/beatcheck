@@ -5,8 +5,8 @@ use serde_json::{json, Value};
 
 use crate::error::{AppError, Result};
 
-const CLAUDE_MODEL: &str = "claude-haiku-4-5-20251001";
-const ANTHROPIC_API_URL: &str = "https://api.anthropic.com/v1/messages";
+const GLM_MODEL: &str = "glm-5.2";
+const ZAI_API_URL: &str = "https://api.z.ai/api/anthropic/v1/messages";
 const SUMMARY_TIMEOUT: Duration = Duration::from_secs(90);
 
 pub struct Summarizer {
@@ -16,8 +16,8 @@ pub struct Summarizer {
 
 impl Summarizer {
     pub fn new() -> Result<Self> {
-        let api_key = std::env::var("ANTHROPIC_API_KEY")
-            .map_err(|_| AppError::Claude("ANTHROPIC_API_KEY not set".to_string()))?;
+        let api_key = std::env::var("ZAI_API_KEY")
+            .map_err(|_| AppError::Claude("ZAI_API_KEY not set".to_string()))?;
         let client = Client::builder()
             .timeout(SUMMARY_TIMEOUT)
             .build()
@@ -79,15 +79,15 @@ Article:
         );
 
         let body = json!({
-            "model": CLAUDE_MODEL,
+            "model": GLM_MODEL,
             "max_tokens": 1024,
             "messages": [{"role": "user", "content": prompt}]
         });
 
         let response = self
             .client
-            .post(ANTHROPIC_API_URL)
-            .header("x-api-key", &self.api_key)
+            .post(ZAI_API_URL)
+            .header("Authorization", format!("Bearer {}", &self.api_key))
             .header("anthropic-version", "2023-06-01")
             .header("content-type", "application/json")
             .json(&body)
@@ -131,6 +131,6 @@ Article:
     }
 
     pub fn model_version(&self) -> &'static str {
-        CLAUDE_MODEL
+        GLM_MODEL
     }
 }
